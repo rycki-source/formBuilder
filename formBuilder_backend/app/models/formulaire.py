@@ -22,8 +22,8 @@ class Formulaire(Base):
     type_structurel = Column(String(50), nullable=False, default='simple', server_default='simple')
     type_fonctionnel = Column(String(50), nullable=False, default='personnalise', server_default='personnalise')
     structure_json = Column(JSONB, nullable=False)
-    date_creation = Column(DateTime, server_default=func.now())
-    date_modification = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    date_creation = Column(DateTime, default=func.now(), nullable=False)
+    date_modification = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     actif = Column(Boolean, default=True, index=True)
     publie = Column(Boolean, default=False, index=True)
     developpeur_id = Column(
@@ -33,6 +33,12 @@ class Formulaire(Base):
         index=True,
     )
     version = Column(String(20), default="1.0")
+    
+    # Configuration webhook pour intégration externe
+    webhook_url = Column(String(500), nullable=True)  # URL de callback externe
+    webhook_enabled = Column(Boolean, default=False)  # Activer/désactiver le webhook
+    webhook_secret = Column(String(255), nullable=True)  # Secret pour sécuriser le webhook
+    webhook_retry_count = Column(Integer, default=3)  # Nombre de tentatives en cas d'échec
 
 
 class FormulaireVersion(Base):
@@ -90,3 +96,4 @@ class RegleValidation(Base):
     dependance_champ_id = Column(
         Integer, ForeignKey("champ.id", ondelete="SET NULL"), nullable=True
     )
+

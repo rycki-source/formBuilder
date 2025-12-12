@@ -58,6 +58,10 @@ class FormulaireUpdate(BaseModel):
     type_fonctionnel: Optional[str] = None
     structure_json: Optional[Dict[str, Any]] = None
     publie: Optional[bool] = None
+    webhook_url: Optional[str] = None
+    webhook_enabled: Optional[bool] = None
+    webhook_secret: Optional[str] = None
+    webhook_retry_count: Optional[int] = Field(None, ge=1, le=10)
 
 
 class FormulaireResponse(FormulaireBase):
@@ -69,6 +73,9 @@ class FormulaireResponse(FormulaireBase):
     type_fonctionnel: str
     date_creation: datetime
     date_modification: datetime
+    webhook_url: Optional[str] = None
+    webhook_enabled: Optional[bool] = False
+    webhook_retry_count: Optional[int] = 3
 
     class Config:
         from_attributes = True

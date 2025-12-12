@@ -40,6 +40,14 @@ export const SoumissionsPage = () => {
     try {
       await soumissionsApi.updateStatus(soumissionId, statut);
       await loadSoumissions();
+      
+      // Message de confirmation selon le statut
+      const messages = {
+        'validee': '✓ Soumission validée avec succès',
+        'rejetee': '✗ Soumission rejetée',
+        'en_attente': '⏳ Soumission mise en attente'
+      };
+      alert(messages[statut] || 'Statut mis à jour');
     } catch (error) {
       console.error('Erreur lors de la mise à jour du statut:', error);
       alert('Erreur lors de la mise à jour du statut');
@@ -58,13 +66,98 @@ export const SoumissionsPage = () => {
     }
   };
 
+  const handleExportExcel = async () => {
+    const ids = filteredSoumissions
+      .map(s => s.id)
+      .filter((id): id is string => id !== undefined)
+      .map(id => Number(id))
+      .filter(id => !Number.isNaN(id));
+    
+    if (ids.length === 0) {
+      alert('Aucune soumission à exporter');
+      return;
+    }
+
+    try {
+      const blob = await soumissionsApi.exportExcel(ids);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `soumissions_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors de l\'export Excel:', error);
+      alert('Erreur lors de l\'export Excel');
+    }
+  };
+
+  const handleExportCSV = async () => {
+    const ids = filteredSoumissions
+      .map(s => s.id)
+      .filter((id): id is string => id !== undefined)
+      .map(id => Number(id))
+      .filter(id => !Number.isNaN(id));
+    
+    if (ids.length === 0) {
+      alert('Aucune soumission à exporter');
+      return;
+    }
+
+    try {
+      const blob = await soumissionsApi.exportCSV(ids);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `soumissions_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors de l\'export CSV:', error);
+      alert('Erreur lors de l\'export CSV');
+    }
+  };
+
+  const handleExportJSON = async () => {
+    const ids = filteredSoumissions
+      .map(s => s.id)
+      .filter((id): id is string => id !== undefined)
+      .map(id => Number(id))
+      .filter(id => !Number.isNaN(id));
+    
+    if (ids.length === 0) {
+      alert('Aucune soumission à exporter');
+      return;
+    }
+
+    try {
+      const blob = await soumissionsApi.exportJSON(ids);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `soumissions_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erreur lors de l\'export JSON:', error);
+      alert('Erreur lors de l\'export JSON');
+    }
+  };
+
   const filteredSoumissions = soumissions.filter(s => {
     if (filter === 'all') return true;
-    return s.statut === filter;
+    return s.statut.toLowerCase() === filter;
   });
 
   const getStatusBadge = (statut: string) => {
-    switch (statut) {
+    const statusLower = statut.toLowerCase();
+    switch (statusLower) {
       case 'validee':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -112,10 +205,20 @@ export const SoumissionsPage = () => {
                 <p className="text-sm text-gray-600">{currentFormulaire?.nom}</p>
               </div>
             </div>
-            <Button variant="outline" onClick={() => alert('Export Excel à implémenter')}>
-              <Download className="w-4 h-4 mr-2" />
-              Exporter Excel
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleExportExcel}>
+                <Download className="w-4 h-4 mr-2" />
+                Exporter Excel
+              </Button>
+              <Button variant="outline" onClick={handleExportCSV}>
+                <Download className="w-4 h-4 mr-2" />
+                Exporter CSV
+              </Button>
+              <Button variant="outline" onClick={handleExportJSON}>
+                <Download className="w-4 h-4 mr-2" />
+                Exporter JSON
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -141,7 +244,7 @@ export const SoumissionsPage = () => {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            En attente ({soumissions.filter(s => s.statut === 'en_attente').length})
+            En attente ({soumissions.filter(s => s.statut.toLowerCase() === 'en_attente' || s.statut.toLowerCase() === 'soumis').length})
           </button>
           <button
             onClick={() => setFilter('validee')}
@@ -151,7 +254,7 @@ export const SoumissionsPage = () => {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Validées ({soumissions.filter(s => s.statut === 'validee').length})
+            Validées ({soumissions.filter(s => s.statut.toLowerCase() === 'validee').length})
           </button>
           <button
             onClick={() => setFilter('rejetee')}
@@ -161,7 +264,7 @@ export const SoumissionsPage = () => {
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Rejetées ({soumissions.filter(s => s.statut === 'rejetee').length})
+            Rejetées ({soumissions.filter(s => s.statut.toLowerCase() === 'rejetee').length})
           </button>
         </div>
 
@@ -200,7 +303,7 @@ export const SoumissionsPage = () => {
                   </div>
 
                   <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
-                    {soumission.statut !== 'validee' && (
+                    {soumission.statut.toLowerCase() !== 'validee' && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -210,7 +313,7 @@ export const SoumissionsPage = () => {
                         Valider
                       </Button>
                     )}
-                    {soumission.statut !== 'rejetee' && (
+                    {soumission.statut.toLowerCase() !== 'rejetee' && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -220,7 +323,7 @@ export const SoumissionsPage = () => {
                         Rejeter
                       </Button>
                     )}
-                    {soumission.statut !== 'en_attente' && (
+                    {soumission.statut.toLowerCase() !== 'en_attente' && soumission.statut.toLowerCase() !== 'soumis' && (
                       <Button
                         size="sm"
                         variant="outline"

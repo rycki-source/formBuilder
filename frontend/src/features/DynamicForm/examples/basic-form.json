@@ -1,0 +1,236 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "name": "Formulaire de Contact Simple",
+    "description": "Un formulaire de contact basique avec validation",
+    "author": "FormBuilder",
+    "createdAt": "2024-01-15",
+    "tags": ["contact", "simple", "exemple"]
+  },
+  "config": {
+    "id": "contact-form-basic",
+    "version": "1.0.0",
+    "name": "Contact",
+    "description": "Remplissez ce formulaire pour nous contacter",
+    "sections": [
+      {
+        "id": "personal-info",
+        "title": "Informations Personnelles",
+        "description": "Vos coordonnées",
+        "icon": "user",
+        "order": 1,
+        "groups": [
+          {
+            "id": "identity",
+            "title": "Identité",
+            "layout": "grid",
+            "columns": 2,
+            "fields": [
+              {
+                "id": "firstName",
+                "name": "firstName",
+                "type": "text",
+                "label": "Prénom",
+                "placeholder": "Entrez votre prénom",
+                "required": true,
+                "validation": [
+                  {
+                    "type": "required",
+                    "message": "Le prénom est obligatoire"
+                  },
+                  {
+                    "type": "minLength",
+                    "value": 2,
+                    "message": "Le prénom doit contenir au moins 2 caractères"
+                  }
+                ],
+                "span": 1
+              },
+              {
+                "id": "lastName",
+                "name": "lastName",
+                "type": "text",
+                "label": "Nom",
+                "placeholder": "Entrez votre nom",
+                "required": true,
+                "validation": [
+                  {
+                    "type": "required",
+                    "message": "Le nom est obligatoire"
+                  },
+                  {
+                    "type": "minLength",
+                    "value": 2,
+                    "message": "Le nom doit contenir au moins 2 caractères"
+                  }
+                ],
+                "span": 1
+              }
+            ]
+          },
+          {
+            "id": "contact-details",
+            "title": "Coordonnées",
+            "layout": "grid",
+            "columns": 2,
+            "fields": [
+              {
+                "id": "email",
+                "name": "email",
+                "type": "email",
+                "label": "Email",
+                "placeholder": "votre@email.com",
+                "required": true,
+                "validation": [
+                  {
+                    "type": "required",
+                    "message": "L'email est obligatoire"
+                  },
+                  {
+                    "type": "email",
+                    "message": "Format d'email invalide"
+                  }
+                ],
+                "span": 2
+              },
+              {
+                "id": "phone",
+                "name": "phone",
+                "type": "tel",
+                "label": "Téléphone",
+                "placeholder": "+33 6 12 34 56 78",
+                "required": false,
+                "validation": [
+                  {
+                    "type": "pattern",
+                    "pattern": "^[+]?[0-9\\s-()]+$",
+                    "message": "Format de téléphone invalide"
+                  }
+                ],
+                "span": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "message-section",
+        "title": "Votre Message",
+        "description": "Dites-nous en plus",
+        "icon": "message",
+        "order": 2,
+        "groups": [
+          {
+            "id": "message-group",
+            "fields": [
+              {
+                "id": "subject",
+                "name": "subject",
+                "type": "select",
+                "label": "Sujet",
+                "placeholder": "Sélectionnez un sujet",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Question générale",
+                    "value": "general"
+                  },
+                  {
+                    "label": "Support technique",
+                    "value": "support"
+                  },
+                  {
+                    "label": "Demande de devis",
+                    "value": "quote"
+                  },
+                  {
+                    "label": "Autre",
+                    "value": "other"
+                  }
+                ],
+                "validation": [
+                  {
+                    "type": "required",
+                    "message": "Veuillez sélectionner un sujet"
+                  }
+                ]
+              },
+              {
+                "id": "message",
+                "name": "message",
+                "type": "textarea",
+                "label": "Message",
+                "placeholder": "Votre message ici...",
+                "required": true,
+                "rows": 5,
+                "validation": [
+                  {
+                    "type": "required",
+                    "message": "Le message est obligatoire"
+                  },
+                  {
+                    "type": "minLength",
+                    "value": 10,
+                    "message": "Le message doit contenir au moins 10 caractères"
+                  },
+                  {
+                    "type": "maxLength",
+                    "value": 1000,
+                    "message": "Le message ne peut pas dépasser 1000 caractères"
+                  }
+                ]
+              },
+              {
+                "id": "priority",
+                "name": "priority",
+                "type": "radio",
+                "label": "Priorité",
+                "defaultValue": "normal",
+                "options": [
+                  {
+                    "label": "Basse",
+                    "value": "low"
+                  },
+                  {
+                    "label": "Normale",
+                    "value": "normal"
+                  },
+                  {
+                    "label": "Haute",
+                    "value": "high"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "layout": {
+      "type": "grid",
+      "columns": 1,
+      "gap": "1.5rem",
+      "responsive": {
+        "mobile": 1,
+        "tablet": 1,
+        "desktop": 1
+      }
+    },
+    "submitButton": {
+      "label": "Envoyer",
+      "position": "center"
+    },
+    "cancelButton": {
+      "label": "Annuler",
+      "show": true
+    },
+    "validateOnBlur": true,
+    "validateOnSubmit": true,
+    "messages": {
+      "required": "Ce champ est obligatoire",
+      "invalid": "La valeur saisie est invalide",
+      "success": "Formulaire envoyé avec succès !",
+      "error": "Une erreur est survenue lors de l'envoi"
+    }
+  }
+}

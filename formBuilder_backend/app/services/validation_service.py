@@ -13,7 +13,11 @@ class ValidationService:
         erreurs = {}
 
         for champ in structure.get("champs", []):
-            champ_id = champ["id"]
+            # Utiliser le label comme identifiant de champ
+            champ_id = champ.get("id") or champ.get("label")
+            if not champ_id:
+                continue
+                
             valeur = donnees.get(champ_id)
 
             # Vérifier si obligatoire
@@ -25,7 +29,7 @@ class ValidationService:
 
             if valeur:
                 # Valider le type
-                type_champ = champ.get("type")
+                type_champ = champ.get("type_champ") or champ.get("type")
                 error = ValidationService._validate_type(valeur, type_champ)
                 if error:
                     if champ_id not in erreurs:
@@ -60,6 +64,25 @@ class ValidationService:
                 datetime.fromisoformat(valeur)
             except ValueError:
                 return "Format de date invalide"
+        elif type_champ == "geolocation":
+            # Valider structure géolocalisation: {latitude, longitude, accuracy?}
+            if not isinstance(valeur, dict):
+                return "Format de géolocalisation invalide"
+            if "latitude" not in valeur or "longitude" not in valeur:
+                return "Latitude et longitude requises"
+            try:
+                lat = float(valeur["latitude"])
+                lng = float(valeur["longitude"])
+                if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                    return "Coordonnées GPS invalides"
+            except (ValueError, TypeError):
+                return "Coordonnées GPS invalides"
+        elif type_champ == "signature":
+            # Valider que la signature est une chaîne base64
+            if not isinstance(valeur, str):
+                return "Format de signature invalide"
+            if not valeur.startswith("data:image/"):
+                return "La signature doit être une image"
         return None
 
     @staticmethod

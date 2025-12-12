@@ -11,7 +11,7 @@ export interface RegisterRequest {
 export const authApi = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post('/auth/login', {
-      email: credentials.username,
+      email: credentials.username.trim().toLowerCase(),
       mot_de_passe: credentials.password,
     });
     return response.data;

@@ -21,7 +21,6 @@ class SoumissionResponse(BaseModel):
     donnees: Dict[str, Any]
     statut: str
     date_soumission: datetime
-    version_formulaire: str
 
     class Config:
         from_attributes = True

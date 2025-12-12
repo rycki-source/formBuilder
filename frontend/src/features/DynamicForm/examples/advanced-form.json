@@ -1,0 +1,372 @@
+{
+  "version": "1.0.0",
+  "metadata": {
+    "name": "Formulaire de Demande de Devis",
+    "description": "Formulaire avancé avec conditions et champs calculés",
+    "author": "FormBuilder",
+    "createdAt": "2024-01-15",
+    "tags": ["devis", "conditionnel", "avancé"]
+  },
+  "config": {
+    "id": "quote-form-advanced",
+    "version": "1.0.0",
+    "name": "Demande de Devis",
+    "description": "Obtenez un devis personnalisé",
+    "sections": [
+      {
+        "id": "client-info",
+        "title": "Informations Client",
+        "icon": "user",
+        "order": 1,
+        "groups": [
+          {
+            "id": "client-type",
+            "fields": [
+              {
+                "id": "clientType",
+                "name": "clientType",
+                "type": "radio",
+                "label": "Type de client",
+                "required": true,
+                "defaultValue": "individual",
+                "options": [
+                  {
+                    "label": "Particulier",
+                    "value": "individual"
+                  },
+                  {
+                    "label": "Entreprise",
+                    "value": "business"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "individual-info",
+            "title": "Informations Particulier",
+            "layout": "grid",
+            "columns": 2,
+            "displayConditions": {
+              "field": "clientType",
+              "operator": "equals",
+              "value": "individual"
+            },
+            "fields": [
+              {
+                "id": "firstName",
+                "name": "firstName",
+                "type": "text",
+                "label": "Prénom",
+                "required": true,
+                "span": 1
+              },
+              {
+                "id": "lastName",
+                "name": "lastName",
+                "type": "text",
+                "label": "Nom",
+                "required": true,
+                "span": 1
+              }
+            ]
+          },
+          {
+            "id": "business-info",
+            "title": "Informations Entreprise",
+            "layout": "grid",
+            "columns": 2,
+            "displayConditions": {
+              "field": "clientType",
+              "operator": "equals",
+              "value": "business"
+            },
+            "fields": [
+              {
+                "id": "companyName",
+                "name": "companyName",
+                "type": "text",
+                "label": "Nom de l'entreprise",
+                "required": true,
+                "span": 2
+              },
+              {
+                "id": "siret",
+                "name": "siret",
+                "type": "text",
+                "label": "SIRET",
+                "required": true,
+                "validation": [
+                  {
+                    "type": "pattern",
+                    "pattern": "^[0-9]{14}$",
+                    "message": "Le SIRET doit contenir 14 chiffres"
+                  }
+                ],
+                "span": 1
+              },
+              {
+                "id": "vatNumber",
+                "name": "vatNumber",
+                "type": "text",
+                "label": "Numéro de TVA",
+                "placeholder": "FR12345678901",
+                "span": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "service-selection",
+        "title": "Sélection des Services",
+        "icon": "shopping-cart",
+        "order": 2,
+        "groups": [
+          {
+            "id": "services",
+            "fields": [
+              {
+                "id": "serviceType",
+                "name": "serviceType",
+                "type": "select",
+                "label": "Type de service",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Développement Web",
+                    "value": "web-dev"
+                  },
+                  {
+                    "label": "Développement Mobile",
+                    "value": "mobile-dev"
+                  },
+                  {
+                    "label": "Consultation",
+                    "value": "consulting"
+                  },
+                  {
+                    "label": "Formation",
+                    "value": "training"
+                  }
+                ]
+              },
+              {
+                "id": "projectScope",
+                "name": "projectScope",
+                "type": "select",
+                "label": "Envergure du projet",
+                "required": true,
+                "options": [
+                  {
+                    "label": "Petit (< 1 mois)",
+                    "value": "small"
+                  },
+                  {
+                    "label": "Moyen (1-3 mois)",
+                    "value": "medium"
+                  },
+                  {
+                    "label": "Grand (3-6 mois)",
+                    "value": "large"
+                  },
+                  {
+                    "label": "Très grand (> 6 mois)",
+                    "value": "xlarge"
+                  }
+                ]
+              },
+              {
+                "id": "needsDesign",
+                "name": "needsDesign",
+                "type": "switch",
+                "label": "Besoin de design graphique",
+                "defaultValue": false
+              },
+              {
+                "id": "designBudget",
+                "name": "designBudget",
+                "type": "number",
+                "label": "Budget design (€)",
+                "placeholder": "5000",
+                "min": 500,
+                "max": 50000,
+                "step": 500,
+                "displayConditions": {
+                  "field": "needsDesign",
+                  "operator": "equals",
+                  "value": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "budget-section",
+        "title": "Budget et Calculs",
+        "icon": "calculator",
+        "order": 3,
+        "groups": [
+          {
+            "id": "budget-fields",
+            "layout": "grid",
+            "columns": 2,
+            "fields": [
+              {
+                "id": "baseBudget",
+                "name": "baseBudget",
+                "type": "number",
+                "label": "Budget de base (€)",
+                "required": true,
+                "min": 1000,
+                "max": 500000,
+                "step": 1000,
+                "defaultValue": 10000,
+                "span": 1
+              },
+              {
+                "id": "discountPercent",
+                "name": "discountPercent",
+                "type": "range",
+                "label": "Remise (%)",
+                "min": 0,
+                "max": 30,
+                "step": 5,
+                "defaultValue": 0,
+                "span": 1
+              },
+              {
+                "id": "totalBudget",
+                "name": "totalBudget",
+                "type": "number",
+                "label": "Budget Total (€)",
+                "readonly": true,
+                "computed": {
+                  "formula": "baseBudget * (1 - discountPercent / 100) + (needsDesign ? designBudget : 0)",
+                  "dependsOn": ["baseBudget", "discountPercent", "needsDesign", "designBudget"]
+                },
+                "span": 2,
+                "className": "font-bold text-lg"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "additional-info",
+        "title": "Informations Complémentaires",
+        "icon": "info",
+        "order": 4,
+        "groups": [
+          {
+            "id": "details",
+            "fields": [
+              {
+                "id": "projectDescription",
+                "name": "projectDescription",
+                "type": "textarea",
+                "label": "Description du projet",
+                "placeholder": "Décrivez votre projet en détail...",
+                "required": true,
+                "rows": 5,
+                "validation": [
+                  {
+                    "type": "minLength",
+                    "value": 50,
+                    "message": "La description doit contenir au moins 50 caractères"
+                  }
+                ]
+              },
+              {
+                "id": "deadline",
+                "name": "deadline",
+                "type": "date",
+                "label": "Date limite souhaitée",
+                "required": true,
+                "validation": [
+                  {
+                    "type": "custom",
+                    "customValidator": "validateFutureDate",
+                    "message": "La date doit être dans le futur"
+                  }
+                ]
+              },
+              {
+                "id": "attachments",
+                "name": "attachments",
+                "type": "file",
+                "label": "Documents annexes",
+                "multiple": true,
+                "accept": ".pdf,.doc,.docx,.zip",
+                "maxSize": 10485760,
+                "description": "PDF, Word ou ZIP (max 10MB par fichier)"
+              },
+              {
+                "id": "newsletter",
+                "name": "newsletter",
+                "type": "checkbox",
+                "label": "J'accepte de recevoir la newsletter",
+                "defaultValue": false
+              },
+              {
+                "id": "termsAccepted",
+                "name": "termsAccepted",
+                "type": "checkbox",
+                "label": "J'accepte les conditions générales",
+                "required": true,
+                "validation": [
+                  {
+                    "type": "custom",
+                    "customValidator": "validateChecked",
+                    "message": "Vous devez accepter les conditions"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "layout": {
+      "type": "stepper",
+      "responsive": {
+        "mobile": 1,
+        "tablet": 1,
+        "desktop": 1
+      }
+    },
+    "submitButton": {
+      "label": "Envoyer la demande",
+      "position": "right"
+    },
+    "cancelButton": {
+      "label": "Réinitialiser",
+      "show": true
+    },
+    "validateOnChange": false,
+    "validateOnBlur": true,
+    "validateOnSubmit": true,
+    "autosave": {
+      "enabled": true,
+      "interval": 30000,
+      "key": "quote-form-autosave"
+    },
+    "theme": {
+      "primaryColor": "#3b82f6",
+      "errorColor": "#ef4444",
+      "successColor": "#10b981",
+      "spacing": "1rem"
+    },
+    "messages": {
+      "required": "Ce champ est obligatoire",
+      "invalid": "Valeur invalide",
+      "success": "Demande envoyée avec succès !",
+      "error": "Erreur lors de l'envoi"
+    }
+  },
+  "customValidators": {
+    "validateFutureDate": "function validateFutureDate(value) { return new Date(value) > new Date(); }",
+    "validateChecked": "function validateChecked(value) { return value === true; }"
+  }
+}

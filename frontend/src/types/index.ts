@@ -23,7 +23,7 @@ export interface User {
 export interface ChampFormulaire {
   id?: string;
   label: string;
-  type_champ: 'text' | 'email' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox' | 'radio' | 'file' | 'button';
+  type_champ: 'text' | 'email' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox' | 'radio' | 'file' | 'button' | 'geolocation' | 'signature';
   placeholder?: string;
   obligatoire: boolean;
   ordre: number;
@@ -58,6 +58,10 @@ export interface Formulaire {
   publie: boolean;
   date_creation?: string;
   date_modification?: string;
+  webhook_url?: string;
+  webhook_enabled?: boolean;
+  webhook_secret?: string;
+  webhook_retry_count?: number;
 }
 
 export interface FormulaireCreate {

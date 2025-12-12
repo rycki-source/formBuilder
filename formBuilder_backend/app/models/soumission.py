@@ -23,7 +23,7 @@ class Soumission(Base):
         nullable=False,
         index=True,
     )
-    donnees = Column(JSONB, nullable=False)
+    donnees_json = Column("donnees_json", JSONB, nullable=False)
     statut = Column(String(50), default="SOUMIS", index=True)
     utilisateur_id = Column(
         Integer,
@@ -31,9 +31,19 @@ class Soumission(Base):
         nullable=True,
         index=True,
     )
-    date_soumission = Column(DateTime, server_default=func.now(), index=True)
-    date_modification = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    version_formulaire = Column(String(20), nullable=False)
+    date_soumission = Column(DateTime, default=func.now(), index=True)
+    date_modification = Column(DateTime, default=func.now(), onupdate=func.now())
+    ip_adresse = Column(String(45), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+    
+    # Alias pour compatibilité avec les schémas
+    @property
+    def donnees(self):
+        return self.donnees_json
+    
+    @donnees.setter
+    def donnees(self, value):
+        self.donnees_json = value
 
 
 class ValidationSoumission(Base):

@@ -8,6 +8,7 @@ import { useFormBuilderStore } from '../store/formBuilderStore';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Card } from '../components/Card';
+import { ErrorAlert } from '../components/ErrorAlert';
 import { FieldList, FieldEditor, FieldPalette, StepManager } from '../features/FormBuilder';
 import type { ChampFormulaire, FormulaireCreate } from '../types';
 
@@ -31,6 +32,8 @@ export const FormBuilderPage = () => {
 
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'fields' | 'steps'>('fields');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const isMultiStep = currentFormulaire?.type_structurel === 'multi-etapes' || currentFormulaire?.type_structurel === 'wizard';
 
@@ -90,13 +93,17 @@ export const FormBuilderPage = () => {
   };
 
   const handleSave = async () => {
+    // Réinitialiser les messages
+    setError(null);
+    setSuccess(null);
+
     if (!currentFormulaire?.nom?.trim()) {
-      alert('Veuillez saisir un nom pour le formulaire');
+      setError('⚠️ NOM_REQUIS\n\nLe nom du formulaire est obligatoire.\n\n➜ Veuillez saisir un nom pour le formulaire');
       return;
     }
 
     if (!currentFormulaire?.structure_json?.champs || currentFormulaire.structure_json.champs.length === 0) {
-      alert('Veuillez ajouter au moins un champ au formulaire');
+      setError('⚠️ CHAMPS_REQUIS\n\nLe formulaire doit contenir au moins un champ.\n\n➜ Veuillez ajouter au moins un champ au formulaire');
       return;
     }
 
@@ -111,23 +118,50 @@ export const FormBuilderPage = () => {
     try {
       if (id && id !== 'nouveau') {
         await updateFormulaire(id, formData);
-        alert('Formulaire mis à jour avec succès');
+        setSuccess('✅ Formulaire mis à jour avec succès');
+        setTimeout(() => navigate('/formulaires'), 2000);
+        return true;
       } else {
-        const newForm = await createFormulaire(formData);
-        alert('Formulaire créé avec succès');
-        navigate(`/formulaires/${newForm.id}`);
+        await createFormulaire(formData);
+        setSuccess('✅ Formulaire créé avec succès');
+        setTimeout(() => navigate('/formulaires'), 2000);
+        return true;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde du formulaire');
+      
+      // Extraire le message d'erreur structuré
+      const errorData = error?.response?.data;
+      let errorMessage = '❌ ERREUR_SAUVEGARDE\n\nErreur lors de la sauvegarde du formulaire\n\n➜ Veuillez réessayer';
+      
+      if (errorData && typeof errorData === 'object') {
+        if (errorData.error && errorData.message && errorData.action) {
+          errorMessage = `❌ ${errorData.error}\n\n${errorData.message}\n\n➜ ${errorData.action}`;
+        } else if (errorData.message) {
+          errorMessage = `❌ ${errorData.message}`;
+        } else if (errorData.detail) {
+          const detail = typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail, null, 2);
+          errorMessage = `❌ ${detail}`;
+        }
+      }
+      
+      setError(errorMessage);
+      return false;
     }
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (id && id !== 'nouveau') {
       navigate(`/formulaires/${id}/preview`);
     } else {
-      alert('Veuillez d\'abord enregistrer le formulaire');
+      // Proposer de sauvegarder d'abord
+      const shouldSave = window.confirm('Le formulaire doit être enregistré avant de voir l\'aperçu. Voulez-vous l\'enregistrer maintenant ?');
+      if (shouldSave) {
+        await handleSave();
+        // La navigation sera faite après la sauvegarde réussie
+      }
     }
   };
 
@@ -168,6 +202,18 @@ export const FormBuilderPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Messages d'erreur et de succès */}
+        {error && (
+          <div className="mb-6">
+            <ErrorAlert error={error} type="error" onClose={() => setError(null)} />
+          </div>
+        )}
+        {success && (
+          <div className="mb-6">
+            <ErrorAlert error={success} type="info" onClose={() => setSuccess(null)} />
+          </div>
+        )}
+
         <div className="grid grid-cols-12 gap-6">
           {/* Palette de champs */}
           <div className="col-span-12 lg:col-span-3">
@@ -196,6 +242,52 @@ export const FormBuilderPage = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
                   />
+                </div>
+                
+                {/* Configuration Webhook */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900">🔗 Intégration Webhook</h3>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={currentFormulaire.webhook_enabled || false}
+                        onChange={(e) => updateCurrentFormulaire({ webhook_enabled: e.target.checked })}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">Activer</span>
+                    </label>
+                  </div>
+                  
+                  {currentFormulaire.webhook_enabled && (
+                    <div className="space-y-3 bg-blue-50 p-3 rounded-lg">
+                      <Input
+                        label="URL de webhook"
+                        type="url"
+                        value={currentFormulaire.webhook_url || ''}
+                        onChange={(e) => updateCurrentFormulaire({ webhook_url: e.target.value })}
+                        placeholder="https://votre-site.com/api/webhook"
+                      />
+                      <Input
+                        label="Secret (optionnel)"
+                        type="password"
+                        value={currentFormulaire.webhook_secret || ''}
+                        onChange={(e) => updateCurrentFormulaire({ webhook_secret: e.target.value })}
+                        placeholder="Clé secrète pour sécuriser le webhook"
+                      />
+                      <Input
+                        label="Nombre de tentatives"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={currentFormulaire.webhook_retry_count || 3}
+                        onChange={(e) => updateCurrentFormulaire({ webhook_retry_count: parseInt(e.target.value) || 3 })}
+                      />
+                      <p className="text-xs text-gray-600">
+                        💡 Les soumissions seront automatiquement envoyées à cette URL
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 

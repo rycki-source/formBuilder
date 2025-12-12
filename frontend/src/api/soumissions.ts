@@ -26,4 +26,28 @@ export const soumissionsApi = {
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/soumissions/${id}`);
   },
+
+  exportExcel: async (soumissionIds: number[]): Promise<Blob> => {
+    const response = await apiClient.post('/exports', 
+      { soumission_ids: soumissionIds, format: 'excel' },
+      { responseType: 'blob' }
+    );
+    return response.data;
+  },
+
+  exportCSV: async (soumissionIds: number[]): Promise<Blob> => {
+    const response = await apiClient.post('/exports', 
+      { soumission_ids: soumissionIds, format: 'csv' },
+      { responseType: 'blob' }
+    );
+    return response.data;
+  },
+
+  exportJSON: async (soumissionIds: number[]): Promise<Blob> => {
+    const response = await apiClient.post('/exports', 
+      { soumission_ids: soumissionIds, format: 'json' },
+      { responseType: 'blob' }
+    );
+    return response.data;
+  },
 };

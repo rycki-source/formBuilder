@@ -3,7 +3,7 @@ import type { Formulaire, FormulaireCreate } from '../types';
 
 export const formulairesApi = {
   getAll: async (): Promise<Formulaire[]> => {
-    const response = await apiClient.get('/formulaires');
+    const response = await apiClient.get('/formulaires/user');
     return response.data;
   },
 

@@ -23,10 +23,10 @@ class AuditService:
         audit_entry = AuditLog(
             utilisateur_id=utilisateur_id,
             action=action,
-            module=module,
-            ip=ip_adresse,
+            entite_type=module,  # Utiliser entite_type au lieu de module
+            entite_id=ressource_id,
+            ip_adresse=ip_adresse,
             details=details,
-            resultat={"status": resultat},
             date_action=datetime.utcnow(),
         )
         self.db.add(audit_entry)

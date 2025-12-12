@@ -42,26 +42,21 @@ class AuthService:
         await self.audit.log_action(
             action="USER_CREATED",
             module="AUTH",
-            details={"user_id": new_user.id, "email": new_user.email},
+            utilisateur_id=new_user.id,
+            details={"email": new_user.email},
+            resultat="SUCCESS"
         )
         return new_user
 
     async def login(self, credentials: LoginRequest, ip_address: Optional[str] = None) -> dict:
         """Authentifier un utilisateur"""
         result = await self.db.execute(
-            select(User).where(User.email == credentials.email)
+            select(User).where(User.email == credentials.email.strip().lower())
         )
         
-        # Utiliser scalars() pour obtenir directement les instances du modèle
         user = result.scalars().first()
 
         if not user or not verify_password(credentials.mot_de_passe, getattr(user, "mot_de_passe")):
-            await self.audit.log_action(
-                action="LOGIN_FAILED",
-                module="AUTH",
-                details={"email": credentials.email},
-                resultat="FAILED",
-            )
             raise ValueError("Email ou mot de passe incorrect")
 
         if getattr(user, "statut", None) != "ACTIF":
@@ -80,8 +75,9 @@ class AuthService:
         await self.audit.log_action(
             action="LOGIN_SUCCESS",
             module="AUTH",
-            utilisateur_id=getattr(user, "id"),
-            ip_adresse=ip_address,
+            utilisateur_id=user.id,
+            details={"email": user.email, "ip_adresse": ip_address},
+            resultat="SUCCESS"
         )
 
         return {

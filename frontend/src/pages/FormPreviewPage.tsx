@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, X, Download, FileText, Code } from 'lucide-react';
 import { useFormBuilderStore } from '../store/formBuilderStore';
+import { soumissionsApi } from '../api/soumissions';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
@@ -28,14 +29,29 @@ export const FormPreviewPage = () => {
     setFormData(prev => ({ ...prev, [fieldLabel]: value }));
   };
 
-  const handleSubmit = (data?: Record<string, unknown>) => {
+  const handleSubmit = async (data?: Record<string, unknown>) => {
     const submitData = data || formData;
     
-    console.log('Données du formulaire:', submitData);
-    alert('Formulaire soumis avec succès ! (fonctionnalité à implémenter)');
-    
-    if (currentFormulaire?.type_structurel === 'modal') {
-      setShowModal(false);
+    if (!id) {
+      alert('Erreur: ID du formulaire non trouvé');
+      return;
+    }
+
+    try {
+      await soumissionsApi.create({
+        formulaire_id: id,
+        donnees: submitData
+      });
+      
+      alert('Formulaire soumis avec succès !');
+      setFormData({}); // Réinitialiser le formulaire
+      
+      if (currentFormulaire?.type_structurel === 'modal') {
+        setShowModal(false);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la soumission:', error);
+      alert('Erreur lors de la soumission du formulaire');
     }
   };
 
@@ -331,6 +347,34 @@ export const FormPreviewPage = () => {
               {field.label}
             </button>
           </div>
+        );
+      }
+
+      case 'geolocation': {
+        const GeolocationField = React.lazy(() => import('../components/GeolocationField'));
+        return (
+          <React.Suspense key={field.label} fallback={<div>Chargement...</div>}>
+            <GeolocationField
+              value={formData[field.label] as { latitude: number; longitude: number; accuracy?: number }}
+              onChange={(value) => handleInputChange(field.label, value)}
+              label={field.label}
+              required={field.obligatoire}
+            />
+          </React.Suspense>
+        );
+      }
+
+      case 'signature': {
+        const SignatureField = React.lazy(() => import('../components/SignatureField'));
+        return (
+          <React.Suspense key={field.label} fallback={<div>Chargement...</div>}>
+            <SignatureField
+              value={formData[field.label] as string}
+              onChange={(value) => handleInputChange(field.label, value)}
+              label={field.label}
+              required={field.obligatoire}
+            />
+          </React.Suspense>
         );
       }
 

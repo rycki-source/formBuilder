@@ -1,22 +1,26 @@
 import type { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, FileText, LogOut, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Home, FileText, LogOut, Users, Code } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from './Button';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export const Layout = ({ children }: LayoutProps) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    { name: 'Formulaires', href: '/formulaires', icon: FileText },
-    ...(user?.role === 'ADMIN' ? [{ name: 'Utilisateurs', href: '/users', icon: Users }] : []),
+    { name: t('nav.dashboard'), href: '/dashboard', icon: Home },
+    { name: t('nav.forms'), href: '/formulaires', icon: FileText },
+    { name: t('nav.apiDocs'), href: '/api-docs', icon: Code },
+    ...(user?.role === 'ADMIN' ? [{ name: t('nav.users'), href: '/users', icon: Users }] : []),
   ];
 
   const handleLogout = () => {
@@ -62,12 +66,13 @@ export const Layout = ({ children }: LayoutProps) => {
 
             {/* Menu utilisateur */}
             <div className="flex items-center gap-4">
+              <LanguageSwitcher />
               <span className="text-sm text-gray-700 hidden sm:block">
                 {user?.username || user?.email}
               </span>
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
-                Déconnexion
+                {t('auth.logout')}
               </Button>
             </div>
           </div>

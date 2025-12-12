@@ -44,6 +44,45 @@ export const FormTypeSelectionPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
+          {/* Option Import Référentiel */}
+          <Card className="bg-linear-to-r from-purple-50 to-blue-50 border-2 border-purple-200">
+            <div className="flex items-center justify-between p-2">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center">
+                  <span className="text-2xl mr-3">🚀</span>
+                  Créer à partir d'un référentiel
+                </h3>
+                <p className="text-sm text-gray-700 mb-3">
+                  Importez un fichier de configuration (Excel, JSON, YAML) pour générer automatiquement 
+                  un formulaire complet avec validation, conditions et champs calculés.
+                </p>
+                <div className="flex gap-2 flex-wrap text-xs text-gray-600">
+                  <span className="bg-white px-3 py-1 rounded-full">✓ Validation automatique</span>
+                  <span className="bg-white px-3 py-1 rounded-full">✓ Champs conditionnels</span>
+                  <span className="bg-white px-3 py-1 rounded-full">✓ Calculs dynamiques</span>
+                </div>
+              </div>
+              <div className="ml-4">
+                <Button
+                  variant="primary"
+                  onClick={() => navigate('/formulaires/dynamique')}
+                  className="px-6 py-3 text-base font-semibold whitespace-nowrap"
+                >
+                  📥 Importer référentiel
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-gray-50 px-4 text-sm text-gray-500 font-medium">OU créer manuellement</span>
+            </div>
+          </div>
+
           {/* Étape 1: Type Structurel */}
           <Card title="Étape 1 : Choisissez la structure">
             <p className="text-sm text-gray-600 mb-6">

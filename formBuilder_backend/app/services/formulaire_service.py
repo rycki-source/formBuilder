@@ -18,6 +18,8 @@ class FormulaireService:
         new_form = Formulaire(
             nom=form_data.nom,
             description=form_data.description,
+            type_structurel=form_data.type_structurel,
+            type_fonctionnel=form_data.type_fonctionnel,
             structure_json=form_data.structure_json,
             developpeur_id=developpeur_id,
         )

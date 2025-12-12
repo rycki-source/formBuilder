@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.db.session import engine
 from app.db.base import Base
 from app.middleware.logging import setup_logging
+from app.middleware.error_handler import global_exception_handler
 import logging
 
 # Setup logging
@@ -33,14 +34,28 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware - Configuration pour API publique
+# En production, restreindre aux domaines autorisés dans settings.allowed_origins_list
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En développement, autoriser toutes les origines
+    allow_origins=["*"] if settings.ENVIRONMENT == "development" else settings.allowed_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],  # Pour les téléchargements de fichiers
 )
+
+# Register global exception handler
+from fastapi import Request
+from fastapi.responses import JSONResponse
+import traceback
+
+@app.exception_handler(Exception)
+async def handle_exception(request: Request, exc: Exception):
+    # Logger l'erreur complète
+    logger.error(f"Exception non gérée: {exc}")
+    logger.error(f"Traceback: {traceback.format_exc()}")
+    return await global_exception_handler(request, exc)
 
 # Include routers
 app.include_router(api_router)

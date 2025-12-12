@@ -50,6 +50,9 @@ class ChampTypeEnum:
     RADIO = "radio"
     FILE = "file"
     TEXTAREA = "textarea"
+    GEOLOCATION = "geolocation"
+    SIGNATURE = "signature"
+    BUTTON = "button"
 
 
 CHAMP_TYPES = [
@@ -62,6 +65,9 @@ CHAMP_TYPES = [
     ChampTypeEnum.RADIO,
     ChampTypeEnum.FILE,
     ChampTypeEnum.TEXTAREA,
+    ChampTypeEnum.GEOLOCATION,
+    ChampTypeEnum.SIGNATURE,
+    ChampTypeEnum.BUTTON,
 ]
 
 

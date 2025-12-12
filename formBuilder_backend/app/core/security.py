@@ -1,10 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
-from passlib.context import CryptContext
-
-# Configuration bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
 def _get_settings():
     """Lazy import to avoid circular dependency"""
@@ -13,15 +10,15 @@ def _get_settings():
 
 
 def hash_password(password: str) -> str:
-    """Hash password avec bcrypt + pepper"""
-    salted_password = f"{password}{_get_settings().PEPPER}"
-    return pwd_context.hash(salted_password)
+    """Hash password avec bcrypt direct (passlib incompatible avec bcrypt 5.0)"""
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Vérifier le mot de passe"""
-    salted_password = f"{plain_password}{_get_settings().PEPPER}"
-    return pwd_context.verify(salted_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

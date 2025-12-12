@@ -51,13 +51,23 @@ export const FormListPage = () => {
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Mes Formulaires</h1>
             <p className="text-gray-600">Gérez tous vos formulaires</p>
           </div>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/formulaires/creer')}
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Nouveau formulaire
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/formulaires/dynamique')}
+              className="flex items-center"
+            >
+              <span className="mr-2">📥</span>
+              Importer référentiel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => navigate('/formulaires/creer')}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Nouveau formulaire
+            </Button>
+          </div>
         </div>
 
         {/* Filtres */}

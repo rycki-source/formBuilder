@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import Response, HTMLResponse
+from fastapi.responses import Response, HTMLResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.formulaire import FormulaireCreate, FormulaireResponse, FormulaireUpdate
 from app.services.formulaire_service import FormulaireService
 from app.api.dependencies import get_current_user
-from app.utils.pdf_generator import PDFGenerator
-from typing import List
+# from app.utils.pdf_generator import PDFGenerator  # Temporairement désactivé (nécessite GTK sur Windows)
+from typing import List, Dict, Any, Optional
 
 router = APIRouter(prefix="/formulaires", tags=["formulaires"])
 
@@ -18,9 +18,63 @@ async def create_formulaire(
     current_user: User = Depends(get_current_user),
 ):
     """Créer un nouveau formulaire"""
-    service = FormulaireService(db)
-    formulaire = await service.create_formulaire(form_data, getattr(current_user, "id"))
-    return formulaire
+    try:
+        service = FormulaireService(db)
+        user_id = getattr(current_user, 'id', None)
+        
+        if not user_id:
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error": "UTILISATEUR_NON_AUTHENTIFIE",
+                    "message": "Impossible d'identifier l'utilisateur",
+                    "action": "Veuillez vous reconnecter à l'application"
+                }
+            )
+        
+        if not form_data.nom or not form_data.nom.strip():
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "NOM_FORMULAIRE_REQUIS",
+                    "message": "Le nom du formulaire est obligatoire",
+                    "action": "Veuillez saisir un nom pour le formulaire"
+                }
+            )
+        
+        if not form_data.structure_json or not form_data.structure_json.get('champs'):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "STRUCTURE_INVALIDE",
+                    "message": "Le formulaire doit contenir au moins un champ",
+                    "action": "Ajoutez des champs au formulaire avant de l'enregistrer"
+                }
+            )
+        
+        formulaire = await service.create_formulaire(form_data, user_id)
+        return formulaire
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "VALIDATION_ECHOUEE",
+                "message": f"Erreur de validation: {str(e)}",
+                "action": "Vérifiez les données du formulaire et corrigez les erreurs"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "ERREUR_SERVEUR",
+                "message": f"Erreur lors de la création du formulaire: {str(e)}",
+                "action": "Veuillez réessayer. Si le problème persiste, contactez l'administrateur"
+            }
+        )
 
 @router.get("/user", response_model=List[FormulaireResponse])
 async def list_user_formulaires(
@@ -31,7 +85,7 @@ async def list_user_formulaires(
     ):
         """Lister les formulaires de l'utilisateur connecté"""
         service = FormulaireService(db)
-        user_id: int = current_user.id  # type: ignore
+        user_id = getattr(current_user, 'id', None)
         formulaires = await service.list_user_formulaires(user_id, skip, limit)
         return formulaires
 
@@ -69,13 +123,42 @@ async def update_formulaire(
     current_user: User = Depends(get_current_user),
 ):
     """Mettre à jour un formulaire"""
-    service = FormulaireService(db)
-    formulaire = await service.update_formulaire(formulaire_id, form_data)
-    
-    if not formulaire:
-        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
-    
-    return formulaire
+    try:
+        service = FormulaireService(db)
+        formulaire = await service.update_formulaire(formulaire_id, form_data)
+        
+        if not formulaire:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "FORMULAIRE_INTROUVABLE",
+                    "message": f"Le formulaire avec l'ID {formulaire_id} n'existe pas",
+                    "action": "Vérifiez l'ID du formulaire ou créez-en un nouveau"
+                }
+            )
+        
+        return formulaire
+        
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "VALIDATION_ECHOUEE",
+                "message": f"Erreur de validation: {str(e)}",
+                "action": "Corrigez les données du formulaire"
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "ERREUR_MISE_A_JOUR",
+                "message": f"Erreur lors de la mise à jour: {str(e)}",
+                "action": "Réessayez ou contactez l'administrateur"
+            }
+        )
 
 @router.post("/{formulaire_id}/publish")
 async def publish_formulaire(
@@ -595,6 +678,118 @@ async def get_formulaire_embed(
     # Générer le HTML sans wrapper (pour intégration)
     html_content = generate_form_html(formulaire_dict, include_wrapper=False)
     return HTMLResponse(content=html_content)
+
+
+@router.get("/{formulaire_id}/json")
+async def get_formulaire_json(
+    formulaire_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Récupérer la structure JSON pure d'un formulaire (API publique pour formulaires publiés)
+    
+    Cet endpoint permet aux développeurs de récupérer la définition d'un formulaire
+    pour l'afficher dans leur propre interface (React, Vue, Angular, etc.)
+    
+    Note: Seuls les formulaires publiés sont accessibles sans authentification
+    """
+    service = FormulaireService(db)
+    formulaire = await service.get_formulaire(formulaire_id)
+    
+    if not formulaire:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Vérifier que le formulaire est publié (accessible publiquement)
+    if not formulaire.publie:
+        raise HTTPException(
+            status_code=403, 
+            detail="Ce formulaire n'est pas publié et n'est pas accessible via l'API publique"
+        )
+    
+    # Retourner uniquement les informations nécessaires pour l'intégration
+    return JSONResponse(content={
+        "id": formulaire.id,
+        "nom": formulaire.nom,
+        "description": formulaire.description,
+        "type_structurel": formulaire.type_structurel,
+        "type_fonctionnel": formulaire.type_fonctionnel,
+        "structure_json": formulaire.structure_json,
+        "version": formulaire.version,
+        "api_endpoints": {
+            "submit": f"/api/v1/formulaires/{formulaire.id}/submit",
+            "json": f"/api/v1/formulaires/{formulaire.id}/json",
+            "html": f"/api/v1/formulaires/{formulaire.id}/html",
+            "embed": f"/api/v1/formulaires/{formulaire.id}/embed"
+        }
+    })
+
+
+@router.post("/{formulaire_id}/submit")
+async def submit_formulaire_public(
+    formulaire_id: int,
+    data: Dict[str, Any],
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Soumettre un formulaire (endpoint public pour formulaires publiés)
+    
+    Permet aux sites externes de soumettre des données de formulaire.
+    Seuls les formulaires publiés acceptent les soumissions publiques.
+    
+    Body: {
+        "donnees": { "champ1": "valeur1", "champ2": "valeur2", ... },
+        "metadata": { "source": "external_site", ... } (optionnel)
+    }
+    """
+    from app.services.soumission_service import SoumissionService
+    from app.schemas.soumission import SoumissionCreate
+    
+    service = FormulaireService(db)
+    formulaire = await service.get_formulaire(formulaire_id)
+    
+    if not formulaire:
+        raise HTTPException(status_code=404, detail="Formulaire non trouvé")
+    
+    # Vérifier que le formulaire est publié
+    if not formulaire.publie:
+        raise HTTPException(
+            status_code=403,
+            detail="Ce formulaire n'accepte pas les soumissions publiques"
+        )
+    
+    # Valider les données reçues
+    if "donnees" not in data:
+        raise HTTPException(
+            status_code=400,
+            detail="Le champ 'donnees' est requis dans le body"
+        )
+    
+    # Créer la soumission
+    soumission_service = SoumissionService(db)
+    soumission_data = SoumissionCreate(
+        formulaire_id=formulaire_id,
+        donnees=data["donnees"],
+        reponses=data.get("donnees", {}),  # Pour compatibilité
+        statut="en_attente"
+    )
+    
+    try:
+        soumission = await soumission_service.create_soumission(soumission_data, user_id=None)
+        
+        return JSONResponse(
+            status_code=201,
+            content={
+                "success": True,
+                "message": "Formulaire soumis avec succès",
+                "soumission_id": soumission.id,
+                "statut": soumission.statut
+            }
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la soumission: {str(e)}"
+        )
 
 
 @router.get("/{formulaire_id}/pdf")

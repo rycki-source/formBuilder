@@ -20,6 +20,8 @@ class User(Base):
     __tablename__ = "utilisateur"
 
     id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(255), nullable=False)
+    prenom = Column(String(255), nullable=False)
     username = Column(String(255), unique=True, nullable=False, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     mot_de_passe = Column(String(255), nullable=False)

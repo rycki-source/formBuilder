@@ -67,16 +67,34 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const newFormulaire = await formulairesApi.create(formulaire);
+      // Recharger la liste depuis le serveur pour garantir la cohérence
+      await get().fetchFormulaires();
       set({ 
-        formulaires: [...get().formulaires, newFormulaire],
         currentFormulaire: newFormulaire,
         isLoading: false,
       });
       return newFormulaire;
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
+      const err = error as { response?: { data?: any } };
+      const errorData = err.response?.data;
+      
+      let errorMessage = 'Erreur lors de la création du formulaire';
+      
+      // Si l'erreur est au format structuré
+      if (errorData && typeof errorData === 'object') {
+        if (errorData.error && errorData.message && errorData.action) {
+          errorMessage = `${errorData.error}: ${errorData.message}\n\n➜ ${errorData.action}`;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.detail) {
+          errorMessage = typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail);
+        }
+      }
+      
       set({ 
-        error: err.response?.data?.detail || 'Erreur lors de la création du formulaire',
+        error: errorMessage,
         isLoading: false,
       });
       throw error;
@@ -93,9 +111,25 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
         isLoading: false,
       });
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } } };
+      const err = error as { response?: { data?: any } };
+      const errorData = err.response?.data;
+      
+      let errorMessage = 'Erreur lors de la mise à jour du formulaire';
+      
+      if (errorData && typeof errorData === 'object') {
+        if (errorData.error && errorData.message && errorData.action) {
+          errorMessage = `${errorData.error}: ${errorData.message}\n\n➜ ${errorData.action}`;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.detail) {
+          errorMessage = typeof errorData.detail === 'string' 
+            ? errorData.detail 
+            : JSON.stringify(errorData.detail);
+        }
+      }
+      
       set({ 
-        error: err.response?.data?.detail || 'Erreur lors de la mise à jour du formulaire',
+        error: errorMessage,
         isLoading: false,
       });
       throw error;
@@ -106,10 +140,9 @@ export const useFormBuilderStore = create<FormBuilderState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       await formulairesApi.delete(id);
-      set({ 
-        formulaires: get().formulaires.filter(f => String(f.id) !== String(id)),
-        isLoading: false,
-      });
+      // Recharger depuis le serveur pour garantir que les formulaires supprimés n'apparaissent plus
+      await get().fetchFormulaires();
+      set({ isLoading: false });
     } catch (error: unknown) {
       const err = error as { response?: { data?: { detail?: string } } };
       set({ 

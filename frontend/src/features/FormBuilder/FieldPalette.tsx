@@ -1,4 +1,4 @@
-import { Type, Mail, Hash, Calendar, List, AlignLeft, CheckSquare, Circle, Upload, MousePointerClick } from 'lucide-react';
+import { Type, Mail, Hash, Calendar, List, AlignLeft, CheckSquare, Circle, Upload, MousePointerClick, MapPin, PenTool } from 'lucide-react';
 import { Card } from '../../components/Card';
 import type { ChampFormulaire } from '../../types';
 
@@ -16,6 +16,8 @@ const fieldTypes = [
   { type: 'checkbox' as const, label: 'Case à cocher', icon: CheckSquare },
   { type: 'radio' as const, label: 'Bouton radio', icon: Circle },
   { type: 'file' as const, label: 'Fichier', icon: Upload },
+  { type: 'geolocation' as const, label: 'Géolocalisation', icon: MapPin },
+  { type: 'signature' as const, label: 'Signature', icon: PenTool },
   { type: 'button' as const, label: 'Bouton', icon: MousePointerClick },
 ];
 

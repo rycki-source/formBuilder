@@ -9,6 +9,8 @@ import { FormBuilderPage } from './pages/FormBuilderPage';
 import { FormPreviewPage } from './pages/FormPreviewPage';
 import { SoumissionsPage } from './pages/SoumissionsPage';
 import { UsersManagementPage } from './pages/UsersManagementPage';
+import { APIDocumentationPage } from './pages/APIDocumentationPage';
+import DynamicFormPage from './pages/DynamicFormPage';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -39,6 +41,14 @@ function App() {
               <Layout>
                 <FormListPage />
               </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/formulaires/dynamique"
+          element={
+            <ProtectedRoute>
+              <DynamicFormPage />
             </ProtectedRoute>
           }
         />
@@ -92,10 +102,29 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/api-docs"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <APIDocumentationPage />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Redirection par défaut */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Page d'accueil - Formulaires dynamiques */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <DynamicFormPage />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Redirection pour routes non trouvées */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,0 +1,7 @@
+Section,Field ID,Field Label,Field Type,Required,Options,Validation Rules,Conditions
+Informations personnelles,nom,Nom,text,true,,min:2;max:50,
+Informations personnelles,email,Email,email,true,,pattern:^[^@]+@[^@]+$,
+Informations personnelles,pays,Pays,select,true,France;Belgique;Suisse;Canada,,
+Informations avancées,localisation,Ma position,geolocation,false,,,
+Informations avancées,signature,Signature,signature,true,,,
+Coordonnées,telephone,Téléphone,tel,false,,"pattern:^\+?[0-9]{10,15}$",
