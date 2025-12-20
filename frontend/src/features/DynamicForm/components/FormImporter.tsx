@@ -5,6 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { FormReferentiel } from '../types/referentiel.types';
 import { parseFile, parseFromURL, parseReferentiel } from '../utils/parser';
 import { validateReferentiel } from '../utils/referentielValidator';
@@ -29,6 +30,7 @@ const FormImporter: React.FC<FormImporterProps> = ({
   validateSchema = true,
   className = ''
 }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>(allowedSources[0] as Tab);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,18 +76,74 @@ const FormImporter: React.FC<FormImporterProps> = ({
           },
         });
 
-        console.log('📥 Réponse reçue:', response.data);
+        console.log('📥 Réponse complète reçue:', response);
+        console.log('📥 response.data:', response.data);
+        console.log('📥 response.data.referentiel:', response.data?.referentiel);
+        console.log('📥 response.data.formulaire_genere:', response.data?.formulaire_genere);
 
-        if (!response.data || !response.data.referentiel) {
-          console.error('❌ Réponse invalide:', response.data);
-          handleError('Réponse invalide du serveur');
+        if (!response.data) {
+          console.error('❌ Pas de data dans la réponse');
+          handleError('Réponse vide du serveur');
+          setLoading(false);
+          return;
+        }
+
+        // Vérifier si un formulaire a été généré automatiquement
+        if (response.data.formulaire_genere) {
+          const formInfo = response.data.formulaire_genere;
+          console.log('🎉 FORMULAIRE GÉNÉRÉ AUTOMATIQUEMENT !');
+          console.log('   ID:', formInfo.id);
+          console.log('   Nom:', formInfo.nom);
+          console.log('   Champs:', formInfo.nb_champs);
+          console.log('   Sections:', formInfo.nb_sections);
+          
+          // Afficher un message de succès avec choix
+          const goToPreview = window.confirm(`✅ Formulaire "${formInfo.nom}" créé avec succès !\n\n📊 ${formInfo.nb_champs} champs dans ${formInfo.nb_sections} sections\n\nOK = Aperçu (remplir le formulaire)\nAnnuler = Éditeur (modifier le formulaire)`);
+          
+          // Rediriger vers l'aperçu ou l'éditeur selon le choix
+          setLoading(false);
+          if (goToPreview) {
+            navigate(`/formulaires/${formInfo.id}/preview`);
+          } else {
+            navigate(`/formulaires/${formInfo.id}`);
+          }
+          return;
+        }
+
+        if (!response.data.referentiel) {
+          console.error('❌ Pas de referentiel dans response.data:', response.data);
+          handleError('Référentiel manquant dans la réponse du serveur');
           setLoading(false);
           return;
         }
 
         const referentielData = response.data.referentiel;
         console.log('✅ Référentiel extrait:', referentielData);
+        console.log('🔍 Type de referentielData:', typeof referentielData);
+        console.log('🔍 Keys de referentielData:', Object.keys(referentielData));
+        console.log('🔍 referentielData.config:', referentielData?.config);
+        console.log('🔍 referentielData.metadata:', referentielData?.metadata);
         console.log('📊 Sections:', referentielData?.config?.sections?.length || 0);
+        
+        // Vérifier la structure minimale requise
+        if (!referentielData.config) {
+          console.error('❌ Pas de config dans referentielData');
+          handleError('Configuration du référentiel manquante');
+          setLoading(false);
+          return;
+        }
+        
+        if (!referentielData.metadata) {
+          console.error('❌ Pas de metadata dans referentielData');
+          handleError('Métadonnées du référentiel manquantes');
+          setLoading(false);
+          return;
+        }
+        
+        if (!referentielData.config.sections || referentielData.config.sections.length === 0) {
+          console.warn('⚠️  Aucune section dans le référentiel !');
+          console.warn('⚠️  config.sections:', referentielData.config.sections);
+        }
       
         // Valider le référentiel
         if (validateSchema) {

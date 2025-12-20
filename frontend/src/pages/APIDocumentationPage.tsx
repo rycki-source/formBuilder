@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Copy, Check, Code } from 'lucide-react';
+import { useSimpleTranslation } from '../hooks/useSimpleTranslation';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 
 export const APIDocumentationPage = () => {
+  const { translate } = useSimpleTranslation();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const API_BASE_URL = 'http://localhost:8000/api/v1';
 
@@ -17,8 +19,8 @@ export const APIDocumentationPage = () => {
     {
       method: 'GET',
       path: '/formulaires/{id}/json',
-      title: 'Récupérer la structure JSON',
-      description: 'Obtenir la définition complète d\'un formulaire publié en JSON',
+      title: translate('Récupérer la structure d\'un formulaire', 'Get form structure'),
+      description: translate('Obtenez la structure JSON complète d\'un formulaire', 'Get the complete JSON structure of a form'),
       public: true,
       example: `fetch('${API_BASE_URL}/formulaires/1/json')
   .then(res => res.json())
@@ -47,8 +49,8 @@ export const APIDocumentationPage = () => {
     {
       method: 'POST',
       path: '/formulaires/{id}/submit',
-      title: 'Soumettre un formulaire',
-      description: 'Envoyer les données d\'un formulaire publié',
+      title: translate('Soumettre un formulaire', 'Submit a form'),
+      description: translate('Soumettez les données d\'un formulaire', 'Submit form data'),
       public: true,
       example: `fetch('${API_BASE_URL}/formulaires/1/submit', {
   method: 'POST',
@@ -78,8 +80,8 @@ export const APIDocumentationPage = () => {
     {
       method: 'GET',
       path: '/formulaires/{id}/embed',
-      title: 'Code HTML embarquable',
-      description: 'Obtenir le code HTML prêt à intégrer',
+      title: translate('Code d\'intégration', 'Embed code'),
+      description: translate('Obtenez le code HTML pour intégrer le formulaire', 'Get the HTML code to embed the form'),
       public: true,
       example: `fetch('${API_BASE_URL}/formulaires/1/embed')
   .then(res => res.text())

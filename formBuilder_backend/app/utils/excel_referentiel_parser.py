@@ -19,7 +19,8 @@ class ExcelReferentielParser:
     @staticmethod
     def parse_excel_file(file_path: str) -> Dict[str, Any]:
         """
-        Parse un fichier Excel et retourne un référentiel de formulaire
+        Parse un fichier Excel et retourne un référentiel de formulaire.
+        Détecte automatiquement le format (multi-feuilles ou simple).
         
         Args:
             file_path: Chemin vers le fichier Excel
@@ -30,56 +31,245 @@ class ExcelReferentielParser:
         wb = openpyxl.load_workbook(file_path, data_only=True)
         
         try:
-            # Parser chaque feuille
-            metadata = ExcelReferentielParser._parse_metadata(wb)
-            sections = ExcelReferentielParser._parse_sections(wb)
-            fields = ExcelReferentielParser._parse_fields(wb)
-            options = ExcelReferentielParser._parse_options(wb)
-            validations = ExcelReferentielParser._parse_validations(wb)
+            # Détecter le format du fichier
+            sheet_names = wb.sheetnames
             
-            # Construire le référentiel
-            referentiel = {
-            "version": metadata.get("version", "1.0.0"),
-            "metadata": {
-                "name": metadata.get("name", "Formulaire sans nom"),
-                "description": metadata.get("description"),
-                "author": metadata.get("author"),
-                "createdAt": metadata.get("createdAt"),
-                "tags": metadata.get("tags", "").split(",") if metadata.get("tags") else []
-            },
-            "config": {
-                "id": metadata.get("id", "form"),
-                "version": metadata.get("version", "1.0.0"),
-                "name": metadata.get("name", "Formulaire sans nom"),
-                "description": metadata.get("description"),
-                "sections": ExcelReferentielParser._build_sections(sections, fields, options, validations),
-                "layout": {
-                    "type": metadata.get("layout_type", "grid"),
-                    "columns": int(metadata.get("layout_columns", 1))
-                },
-                "submitButton": {
-                    "label": metadata.get("submit_label", "Soumettre"),
-                    "position": metadata.get("submit_position", "center")
-                },
-                "cancelButton": {
-                    "label": metadata.get("cancel_label", "Annuler"),
-                    "show": metadata.get("show_cancel", "true").lower() == "true"
-                },
-                "validateOnBlur": metadata.get("validate_on_blur", "true").lower() == "true",
-                "validateOnSubmit": metadata.get("validate_on_submit", "true").lower() == "true",
-                "messages": {
-                    "required": metadata.get("msg_required", "Ce champ est obligatoire"),
-                    "invalid": metadata.get("msg_invalid", "Valeur invalide"),
-                    "success": metadata.get("msg_success", "Formulaire envoyé avec succès !"),
-                    "error": metadata.get("msg_error", "Une erreur est survenue")
-                }
-            }
-        }
+            # Format simple: une seule feuille avec colonnes Section, Groupe, Champ, Type, Label, etc.
+            if len(sheet_names) == 1 or "Metadata" not in sheet_names:
+                print("🔍 Format détecté: SIMPLE (une feuille)")
+                return ExcelReferentielParser._parse_simple_format(wb)
             
-            return referentiel
+            # Format complexe: plusieurs feuilles (Metadata, Sections, Fields, etc.)
+            print("🔍 Format détecté: COMPLEXE (multi-feuilles)")
+            return ExcelReferentielParser._parse_complex_format(wb)
+            
         finally:
             # Fermer le workbook pour libérer le fichier
             wb.close()
+    
+    @staticmethod
+    def _parse_simple_format(wb: openpyxl.Workbook) -> Dict[str, Any]:
+        """
+        Parse un fichier Excel au format simple (une seule feuille).
+        Format attendu: Section | Groupe | Champ | Type | Label | Requis | Options
+        """
+        ws = wb.active
+        
+        # Lire les en-têtes
+        headers = [cell.value for cell in ws[1]]
+        print(f"📋 En-têtes trouvés: {headers}")
+        
+        # Trouver les indices des colonnes
+        col_map = {}
+        for i, header in enumerate(headers):
+            if header:
+                col_map[str(header).strip().lower()] = i
+        
+        print(f"🗺️  Mapping colonnes: {col_map}")
+        
+        # Parser les données
+        sections_dict = {}  # section_title -> section_data
+        
+        for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            # Extraire les valeurs
+            section_title = row[col_map.get('section', 0)] if 'section' in col_map else None
+            groupe = row[col_map.get('groupe', 1)] if 'groupe' in col_map else None
+            champ_name = row[col_map.get('champ', 2)] if 'champ' in col_map else None
+            champ_type = row[col_map.get('type', 3)] if 'type' in col_map else None
+            label = row[col_map.get('label', 4)] if 'label' in col_map else None
+            requis = row[col_map.get('requis', 5)] if 'requis' in col_map else None
+            options = row[col_map.get('options', 6)] if 'options' in col_map else None
+            
+            # Skip les lignes vides
+            if not champ_name or not champ_type:
+                continue
+            
+            print(f"📝 Ligne {row_idx}: Section='{section_title}', Champ='{champ_name}', Type='{champ_type}'")
+            
+            # Utiliser une section par défaut si pas spécifiée
+            if not section_title:
+                section_title = "Informations générales"
+            
+            # Créer la section si elle n'existe pas
+            if section_title not in sections_dict:
+                sections_dict[section_title] = {
+                    "id": section_title.lower().replace(" ", "_"),
+                    "title": section_title,
+                    "description": "",
+                    "groups": []
+                }
+            
+            # Construire le champ
+            is_required = str(requis).strip().lower() in ['oui', 'yes', 'true', '1'] if requis else False
+            
+            field = {
+                "id": champ_name,
+                "name": champ_name,
+                "type": str(champ_type).strip().lower(),
+                "label": label or champ_name,
+                "required": is_required
+            }
+            
+            # Ajouter les règles de validation sous forme de liste
+            if is_required:
+                validations = []
+                
+                # Règle required
+                validations.append({
+                    "type": "required",
+                    "message": f"{label or champ_name} est obligatoire"
+                })
+                
+                # Validations spécifiques par type
+                if champ_type == "email":
+                    validations.append({
+                        "type": "pattern",
+                        "pattern": r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+                        "message": "Adresse email invalide"
+                    })
+                elif champ_type == "tel":
+                    validations.append({
+                        "type": "pattern",
+                        "pattern": r"^[0-9+\s\-()]{10,}$",
+                        "message": "Numéro de téléphone invalide"
+                    })
+                elif champ_type == "text" and "nom" in champ_name.lower():
+                    validations.append({
+                        "type": "minLength",
+                        "value": 2,
+                        "message": "Minimum 2 caractères"
+                    })
+                elif champ_type == "number":
+                    validations.append({
+                        "type": "min",
+                        "value": 0,
+                        "message": "La valeur doit être positive"
+                    })
+                
+                field["validation"] = validations
+            
+            # Ajouter les options si présentes
+            if options and champ_type in ['select', 'radio', 'multiselect', 'checkbox-group']:
+                # Split par | ou ,
+                options_list = str(options).split('|') if '|' in str(options) else str(options).split(',')
+                field["options"] = [{"label": opt.strip(), "value": opt.strip()} for opt in options_list if opt.strip()]
+            
+            # Ajouter au groupe ou directement à la section
+            if groupe:
+                # Trouver ou créer le groupe
+                group = None
+                for g in sections_dict[section_title]["groups"]:
+                    if g["title"] == groupe:
+                        group = g
+                        break
+                
+                if not group:
+                    group = {
+                        "id": groupe.lower().replace(" ", "_").replace("'", ""),
+                        "title": groupe,
+                        "fields": []
+                    }
+                    sections_dict[section_title]["groups"].append(group)
+                
+                group["fields"].append(field)
+            else:
+                # Pas de groupe, créer un groupe par défaut
+                if not sections_dict[section_title]["groups"]:
+                    sections_dict[section_title]["groups"].append({
+                        "id": "default",
+                        "title": "",
+                        "fields": []
+                    })
+                sections_dict[section_title]["groups"][0]["fields"].append(field)
+        
+        # Convertir en liste
+        sections_list = list(sections_dict.values())
+        
+        print(f"\n✅ Parsing terminé:")
+        print(f"   📊 {len(sections_list)} sections créées")
+        total_fields = sum(len(g["fields"]) for s in sections_list for g in s["groups"])
+        print(f"   📝 {total_fields} champs au total\n")
+        
+        # Construire la structure finale
+        return {
+            "version": "1.0.0",
+            "metadata": {
+                "name": "Formulaire importé",
+                "description": "Formulaire importé depuis Excel (format simple)",
+                "author": None,
+                "createdAt": None,
+                "tags": []
+            },
+            "config": {
+                "id": "imported_form",
+                "version": "1.0.0",
+                "name": "Formulaire importé",
+                "description": "Formulaire importé depuis Excel (format simple)",
+                "sections": sections_list,
+                "layout": {"type": "grid", "columns": 1},
+                "submitButton": {"label": "Soumettre", "position": "center"},
+                "cancelButton": {"label": "Annuler", "show": True},
+                "validateOnBlur": True,
+                "validateOnSubmit": True,
+                "messages": {
+                    "required": "Ce champ est obligatoire",
+                    "invalid": "Valeur invalide",
+                    "success": "Formulaire envoyé avec succès !",
+                    "error": "Une erreur est survenue"
+                }
+            }
+        }
+    
+    @staticmethod
+    def _parse_complex_format(wb: openpyxl.Workbook) -> Dict[str, Any]:
+        """Parse le format complexe avec plusieurs feuilles"""
+        # Parser chaque feuille
+        metadata = ExcelReferentielParser._parse_metadata(wb)
+        sections = ExcelReferentielParser._parse_sections(wb)
+        fields = ExcelReferentielParser._parse_fields(wb)
+        options = ExcelReferentielParser._parse_options(wb)
+        validations = ExcelReferentielParser._parse_validations(wb)
+        
+        # Construire le référentiel
+        referentiel = {
+        "version": metadata.get("version", "1.0.0"),
+        "metadata": {
+            "name": metadata.get("name", "Formulaire sans nom"),
+            "description": metadata.get("description"),
+            "author": metadata.get("author"),
+            "createdAt": metadata.get("createdAt"),
+            "tags": metadata.get("tags", "").split(",") if metadata.get("tags") else []
+        },
+        "config": {
+            "id": metadata.get("id", "form"),
+            "version": metadata.get("version", "1.0.0"),
+            "name": metadata.get("name", "Formulaire sans nom"),
+            "description": metadata.get("description"),
+            "sections": ExcelReferentielParser._build_sections(sections, fields, options, validations),
+            "layout": {
+                "type": metadata.get("layout_type", "grid"),
+                "columns": int(metadata.get("layout_columns", 1))
+            },
+            "submitButton": {
+                "label": metadata.get("submit_label", "Soumettre"),
+                "position": metadata.get("submit_position", "center")
+            },
+            "cancelButton": {
+                "label": metadata.get("cancel_label", "Annuler"),
+                "show": metadata.get("show_cancel", "true").lower() == "true"
+            },
+            "validateOnBlur": metadata.get("validate_on_blur", "true").lower() == "true",
+            "validateOnSubmit": metadata.get("validate_on_submit", "true").lower() == "true",
+            "messages": {
+                "required": metadata.get("msg_required", "Ce champ est obligatoire"),
+                "invalid": metadata.get("msg_invalid", "Valeur invalide"),
+                "success": metadata.get("msg_success", "Formulaire envoyé avec succès !"),
+                "error": metadata.get("msg_error", "Une erreur est survenue")
+            }
+        }
+    }
+        
+        return referentiel
     
     @staticmethod
     def _parse_metadata(wb: openpyxl.Workbook) -> Dict[str, Any]:

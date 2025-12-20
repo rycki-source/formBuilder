@@ -41,7 +41,7 @@ const DynamicField: React.FC<DynamicFieldProps> = ({
   const spanClass = field.span ? `col-span-${field.span}` : '';
 
   return (
-    <div className={`${widthClass} ${spanClass} ${field.className || ''}`} style={field.style}>
+    <div className={`${widthClass} ${spanClass} ${field.className || ''}`}>
       {/* Label */}
       {field.label && field.type !== 'checkbox' && field.type !== 'switch' && (
         <label

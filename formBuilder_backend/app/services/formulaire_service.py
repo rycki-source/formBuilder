@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models.formulaire import Formulaire, FormulaireVersion
+from app.models.formulaire import Formulaire
+from app.models.versioning import FormulaireVersion
 from app.schemas.formulaire import FormulaireCreate, FormulaireUpdate
 from typing import List, Optional
 from datetime import datetime
@@ -30,12 +31,15 @@ class FormulaireService:
         # Créer la version 1.0
         version = FormulaireVersion(
             formulaire_id=new_form.id,
-            numero_version="1.0",
-            majeur=1,
-            mineur=0,
-            patch=0,
+            version_number=1,
+            version_tag="v1.0",
+            nom=form_data.nom,
+            description=form_data.description,
             structure_json=form_data.structure_json,
-            auteur_id=developpeur_id,
+            type_structurel=form_data.type_structurel,
+            type_fonctionnel=form_data.type_fonctionnel,
+            created_by=developpeur_id,
+            change_summary="Version initiale du formulaire",
         )
         self.db.add(version)
         await self.db.commit()

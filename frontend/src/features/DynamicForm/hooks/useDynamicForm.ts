@@ -308,11 +308,29 @@ export function useDynamicForm(options: UseDynamicFormOptions): UseDynamicFormRe
     setState(prev => ({ ...prev, isSubmitting: true }));
 
     try {
+      // Marquer tous les champs visibles comme touchés pour afficher les erreurs
+      const allTouched: Record<string, boolean> = {};
+      visibleFields.forEach(fieldId => {
+        allTouched[fieldId] = true;
+      });
+      
+      setState(prev => ({
+        ...prev,
+        touched: { ...prev.touched, ...allTouched }
+      }));
+
       // Validation finale
       const isValid = await validate();
 
       if (!isValid) {
         setState(prev => ({ ...prev, isSubmitting: false }));
+        // Scroll vers la première erreur
+        setTimeout(() => {
+          const firstError = document.querySelector('[data-error="true"]');
+          if (firstError) {
+            firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
         return;
       }
 

@@ -100,16 +100,20 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
         {/* Champs du groupe */}
         <div className={`${layoutClass} ${columnsClass}`}>
           {groupFields.map((field: any) => (
-            <DynamicField
+            <div 
               key={field.id}
-              field={field}
-              value={getFieldValue(field.id)}
-              error={getFieldError(field.id)}
-              touched={state.touched[field.id]}
-              disabled={state.isSubmitting}
-              onChange={(value) => actions.setValue(field.id, value)}
-              onBlur={() => actions.setTouched(field.id, true)}
-            />
+              data-error={state.touched[field.id] && getFieldError(field.id) ? "true" : "false"}
+            >
+              <DynamicField
+                field={field}
+                value={getFieldValue(field.id)}
+                error={getFieldError(field.id)}
+                touched={state.touched[field.id]}
+                disabled={state.isSubmitting}
+                onChange={(value) => actions.setValue(field.id, value)}
+                onBlur={() => actions.setTouched(field.id, true)}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -188,11 +192,9 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
     <form
       onSubmit={handleSubmit}
       className={`max-w-6xl mx-auto p-6 bg-white rounded-lg shadow-md ${className}`}
-      style={config.theme ? {
-        '--primary-color': config.theme.primaryColor,
-        '--error-color': config.theme.errorColor,
-        '--success-color': config.theme.successColor
-      } as React.CSSProperties : undefined}
+      data-primary-color={config.theme?.primaryColor}
+      data-error-color={config.theme?.errorColor}
+      data-success-color={config.theme?.successColor}
     >
       {/* Titre et description du formulaire */}
       {config.name && (
@@ -219,9 +221,30 @@ const DynamicForm: React.FC<DynamicFormProps> = ({
       )}
 
       {/* Message d'erreur global */}
-      {Object.keys(state.errors).length > 0 && config.messages?.error && (
+      {Object.keys(state.errors).length > 0 && Object.keys(state.touched).length > 0 && (
         <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-800">{config.messages.error}</p>
+          <div className="flex items-start gap-3">
+            <span className="text-red-600 text-xl">⚠️</span>
+            <div className="flex-1">
+              <h3 className="font-semibold text-red-800 mb-2">
+                {config.messages?.error || 'Erreurs de validation'}
+              </h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                {Object.entries(state.errors).map(([fieldId, errors]) => {
+                  const field = referentiel.config.sections
+                    .flatMap(s => s.groups)
+                    .flatMap(g => g.fields)
+                    .find(f => f.id === fieldId);
+                  const fieldLabel = field?.label || fieldId;
+                  return errors.map((error, idx) => (
+                    <li key={`${fieldId}-${idx}`}>
+                      <strong>{fieldLabel}</strong>: {error}
+                    </li>
+                  ));
+                })}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 

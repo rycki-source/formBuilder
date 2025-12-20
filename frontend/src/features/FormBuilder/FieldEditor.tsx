@@ -1,9 +1,16 @@
 import { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Shield } from 'lucide-react';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import type { ChampFormulaire } from '../../types';
+
+interface ValidationRule {
+  type: 'required' | 'email' | 'pattern' | 'minLength' | 'maxLength' | 'min' | 'max';
+  message: string;
+  value?: string | number;
+  pattern?: string;
+}
 
 interface FieldEditorProps {
   field: ChampFormulaire;
@@ -13,6 +20,7 @@ interface FieldEditorProps {
 
 export const FieldEditor = ({ field, onUpdateField, onClose }: FieldEditorProps) => {
   const [newOption, setNewOption] = useState('');
+  const [showValidationRules, setShowValidationRules] = useState(false);
 
   const handleAddOption = () => {
     if (newOption.trim()) {
@@ -27,7 +35,44 @@ export const FieldEditor = ({ field, onUpdateField, onClose }: FieldEditorProps)
     onUpdateField({ options: updatedOptions });
   };
 
+  const handleAddValidationRule = (ruleType: ValidationRule['type']) => {
+    const validationRules = (field.validation_rules as ValidationRule[]) || [];
+    
+    const defaultMessages: Record<string, string> = {
+      required: 'Ce champ est obligatoire',
+      email: 'Format email invalide',
+      pattern: 'Format invalide',
+      minLength: 'Minimum {value} caractères',
+      maxLength: 'Maximum {value} caractères',
+      min: 'Valeur minimum: {value}',
+      max: 'Valeur maximum: {value}',
+    };
+
+    const newRule: ValidationRule = {
+      type: ruleType,
+      message: defaultMessages[ruleType] || 'Validation échouée',
+      ...(ruleType === 'minLength' || ruleType === 'maxLength' ? { value: 1 } : {}),
+      ...(ruleType === 'min' || ruleType === 'max' ? { value: 0 } : {}),
+      ...(ruleType === 'pattern' ? { pattern: '' } : {}),
+    };
+
+    onUpdateField({ validation_rules: [...validationRules, newRule] });
+  };
+
+  const handleUpdateValidationRule = (index: number, updates: Partial<ValidationRule>) => {
+    const validationRules = [...((field.validation_rules as ValidationRule[]) || [])];
+    validationRules[index] = { ...validationRules[index], ...updates };
+    onUpdateField({ validation_rules: validationRules });
+  };
+
+  const handleDeleteValidationRule = (index: number) => {
+    const validationRules = ((field.validation_rules as ValidationRule[]) || []).filter((_: ValidationRule, i: number) => i !== index);
+    onUpdateField({ validation_rules: validationRules });
+  };
+
   const showOptions = field.type_champ === 'select' || field.type_champ === 'radio';
+  const canHaveValidation = field.type_champ !== 'button';
+  const validationRules = (field.validation_rules as ValidationRule[]) || [];
 
   return (
     <Card
@@ -146,6 +191,151 @@ export const FieldEditor = ({ field, onUpdateField, onClose }: FieldEditorProps)
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+          </div>
+        )}
+
+        {canHaveValidation && (
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Shield className="w-4 h-4" />
+                Règles de validation
+              </label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowValidationRules(!showValidationRules)}
+              >
+                {showValidationRules ? 'Masquer' : 'Afficher'}
+              </Button>
+            </div>
+
+            {showValidationRules && (
+              <div className="space-y-3">
+                {validationRules.length === 0 && (
+                  <p className="text-xs text-gray-500 italic">
+                    Aucune règle de validation. Ajoutez-en pour sécuriser vos données.
+                  </p>
+                )}
+
+                {validationRules.map((rule, index) => (
+                  <div key={index} className="bg-gray-50 p-3 rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-gray-700 uppercase">
+                        {rule.type}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteValidationRule(index)}
+                        className="text-gray-400 hover:text-red-500"
+                        title="Supprimer la règle"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    <Input
+                      label="Message d'erreur"
+                      value={rule.message}
+                      onChange={(e) => handleUpdateValidationRule(index, { message: e.target.value })}
+                      placeholder="Message affiché si la validation échoue"
+                    />
+
+                    {(rule.type === 'minLength' || rule.type === 'maxLength' || rule.type === 'min' || rule.type === 'max') && (
+                      <Input
+                        label="Valeur"
+                        type="number"
+                        value={rule.value || 0}
+                        onChange={(e) => handleUpdateValidationRule(index, { value: parseInt(e.target.value) })}
+                        placeholder="Valeur de validation"
+                      />
+                    )}
+
+                    {rule.type === 'pattern' && (
+                      <Input
+                        label="Pattern (Regex)"
+                        value={rule.pattern || ''}
+                        onChange={(e) => handleUpdateValidationRule(index, { pattern: e.target.value })}
+                        placeholder="^[A-Za-z]+$"
+                      />
+                    )}
+                  </div>
+                ))}
+
+                <div className="border-t border-gray-200 pt-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">
+                    Ajouter une règle :
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {field.type_champ !== 'checkbox' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAddValidationRule('required')}
+                        className="text-xs"
+                      >
+                        Obligatoire
+                      </Button>
+                    )}
+                    {(field.type_champ === 'text' || field.type_champ === 'email') && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddValidationRule('email')}
+                          className="text-xs"
+                        >
+                          Email
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddValidationRule('minLength')}
+                          className="text-xs"
+                        >
+                          Long. min
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddValidationRule('maxLength')}
+                          className="text-xs"
+                        >
+                          Long. max
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddValidationRule('pattern')}
+                          className="text-xs"
+                        >
+                          Pattern
+                        </Button>
+                      </>
+                    )}
+                    {field.type_champ === 'number' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddValidationRule('min')}
+                          className="text-xs"
+                        >
+                          Min
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddValidationRule('max')}
+                          className="text-xs"
+                        >
+                          Max
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

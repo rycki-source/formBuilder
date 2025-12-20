@@ -9,8 +9,8 @@ export const LanguageSwitcher: React.FC = () => {
     try {
       await i18n.changeLanguage(lng);
       localStorage.setItem('language', lng);
-      // Force un re-render en rechargeant les traductions
-      window.dispatchEvent(new Event('languageChanged'));
+      // Force un re-render complet en rechargeant la page
+      window.location.reload();
     } catch (error) {
       console.error('Erreur lors du changement de langue:', error);
     }

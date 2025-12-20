@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from typing import List
 from app.db.session import get_db
-from app.schemas.user import UserResponse, UserCreate, UserUpdate
+from app.schemas.user import UserResponse, UserCreate, UserUpdate, UserAdminUpdate
 from app.models.user import User
 from app.api.dependencies import get_current_user
 from app.core.security import hash_password
@@ -85,6 +85,8 @@ async def create_user(
         new_user = User(
             username=user_data.username,
             email=user_data.email,
+            nom=user_data.nom,
+            prenom=user_data.prenom,
             mot_de_passe=hash_password(user_data.mot_de_passe),
             role=getattr(user_data, 'role', 'UTILISATEUR'),
         )
@@ -103,6 +105,86 @@ async def create_user(
                 "action": "Vérifiez les données et réessayez"
             }
         )
+@router.put("/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
+    user_data: UserAdminUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Mettre à jour un utilisateur complètement (Admin seulement)"""
+    if getattr(current_user, 'role', None) != "ADMIN":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "ACCES_NON_AUTORISE",
+                "message": "Vous n'avez pas les droits d'administration",
+                "action": "Contactez un administrateur pour obtenir les autorisations"
+            }
+        )
+    
+    try:
+        # Récupérer l'utilisateur
+        result = await db.execute(select(User).filter(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+        
+        # Vérifier l'unicité de l'email si modifié
+        if user_data.email and user_data.email != user.email:
+            result = await db.execute(select(User).filter(User.email == user_data.email))
+            if result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "EMAIL_DEJA_UTILISE",
+                        "message": "Cet email est déjà associé à un autre compte",
+                        "action": "Utilisez une autre adresse email"
+                    }
+                )
+        
+        # Vérifier l'unicité du username si modifié
+        if user_data.username and user_data.username != user.username:
+            result = await db.execute(select(User).filter(User.username == user_data.username))
+            if result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "error": "USERNAME_DEJA_UTILISE",
+                        "message": "Ce nom d'utilisateur est déjà pris",
+                        "action": "Choisissez un autre nom d'utilisateur"
+                    }
+                )
+        
+        # Mettre à jour les champs
+        if user_data.email:
+            user.email = user_data.email
+        if user_data.username:
+            user.username = user_data.username
+        if user_data.nom:
+            user.nom = user_data.nom
+        if user_data.prenom:
+            user.prenom = user_data.prenom
+        if user_data.role:
+            user.role = user_data.role
+        if user_data.mot_de_passe:
+            user.mot_de_passe = hash_password(user_data.mot_de_passe)
+        
+        await db.commit()
+        await db.refresh(user)
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "ERREUR_MODIFICATION",
+                "message": f"Erreur lors de la modification: {str(e)}",
+                "action": "Vérifiez les données et réessayez"
+            }
+        )
+
 @router.put("/{user_id}/role", response_model=UserResponse)
 async def update_user_role(
     user_id: int,

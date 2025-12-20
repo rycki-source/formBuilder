@@ -300,7 +300,7 @@ const FieldComponents = {
 
   // Radio buttons
   radio: (props: FieldRendererProps) => (
-    <div className={`space-y-2 ${props.field.className || ''}`} style={props.field.style}>
+    <div className={`space-y-2 ${props.field.className || ''}`}>
       {props.field.options?.map((option: FieldOption) => (
         <label key={option.value} className="flex items-center space-x-2">
           <input
@@ -324,7 +324,7 @@ const FieldComponents = {
 
   // Checkbox unique
   checkbox: (props: FieldRendererProps) => (
-    <label className={`flex items-center space-x-2 ${props.field.className || ''}`} style={props.field.style}>
+    <label className={`flex items-center space-x-2 ${props.field.className || ''}`}>
       <input
         type="checkbox"
         id={props.field.id}

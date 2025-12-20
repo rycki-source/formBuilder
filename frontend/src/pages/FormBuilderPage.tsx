@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useSimpleTranslation } from '../hooks/useSimpleTranslation';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -13,6 +14,7 @@ import { FieldList, FieldEditor, FieldPalette, StepManager } from '../features/F
 import type { ChampFormulaire, FormulaireCreate } from '../types';
 
 export const FormBuilderPage = () => {
+  const { translate } = useSimpleTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -98,12 +100,12 @@ export const FormBuilderPage = () => {
     setSuccess(null);
 
     if (!currentFormulaire?.nom?.trim()) {
-      setError('⚠️ NOM_REQUIS\n\nLe nom du formulaire est obligatoire.\n\n➜ Veuillez saisir un nom pour le formulaire');
+      setError(translate('Le nom du formulaire est obligatoire', 'Form name is required'));
       return;
     }
 
     if (!currentFormulaire?.structure_json?.champs || currentFormulaire.structure_json.champs.length === 0) {
-      setError('⚠️ CHAMPS_REQUIS\n\nLe formulaire doit contenir au moins un champ.\n\n➜ Veuillez ajouter au moins un champ au formulaire');
+      setError(translate('Au moins un champ est requis', 'At least one field is required'));
       return;
     }
 
@@ -118,12 +120,12 @@ export const FormBuilderPage = () => {
     try {
       if (id && id !== 'nouveau') {
         await updateFormulaire(id, formData);
-        setSuccess('✅ Formulaire mis à jour avec succès');
+        setSuccess(translate('Formulaire mis à jour avec succès', 'Form updated successfully'));
         setTimeout(() => navigate('/formulaires'), 2000);
         return true;
       } else {
         await createFormulaire(formData);
-        setSuccess('✅ Formulaire créé avec succès');
+        setSuccess(translate('Formulaire créé avec succès', 'Form created successfully'));
         setTimeout(() => navigate('/formulaires'), 2000);
         return true;
       }
@@ -132,7 +134,7 @@ export const FormBuilderPage = () => {
       
       // Extraire le message d'erreur structuré
       const errorData = error?.response?.data;
-      let errorMessage = '❌ ERREUR_SAUVEGARDE\n\nErreur lors de la sauvegarde du formulaire\n\n➜ Veuillez réessayer';
+      let errorMessage = translate('Erreur lors de la sauvegarde du formulaire', 'Error saving form');
       
       if (errorData && typeof errorData === 'object') {
         if (errorData.error && errorData.message && errorData.action) {
@@ -157,7 +159,7 @@ export const FormBuilderPage = () => {
       navigate(`/formulaires/${id}/preview`);
     } else {
       // Proposer de sauvegarder d'abord
-      const shouldSave = window.confirm('Le formulaire doit être enregistré avant de voir l\'aperçu. Voulez-vous l\'enregistrer maintenant ?');
+      const shouldSave = window.confirm(translate('Voulez-vous sauvegarder avant l\'aperçu ?', 'Do you want to save before preview?'));
       if (shouldSave) {
         await handleSave();
         // La navigation sera faite après la sauvegarde réussie
@@ -168,7 +170,7 @@ export const FormBuilderPage = () => {
   if (!currentFormulaire) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Chargement...</div>
+        <div className="text-gray-600">{translate('Chargement...', 'Loading...')}</div>
       </div>
     );
   }
@@ -181,20 +183,20 @@ export const FormBuilderPage = () => {
             <div className="flex items-center gap-4">
               <Button variant="outline" size="sm" onClick={() => navigate('/formulaires')}>
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Retour
+                {translate('Retour', 'Back')}
               </Button>
               <h1 className="text-2xl font-bold text-gray-900">
-                {id && id !== 'nouveau' ? 'Éditer le formulaire' : 'Nouveau formulaire'}
+                {id && id !== 'nouveau' ? translate('Éditer le formulaire', 'Edit Form') : translate('Nouveau formulaire', 'New Form')}
               </h1>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={handlePreview}>
                 <Eye className="w-4 h-4 mr-2" />
-                Aperçu
+                {translate('Aperçu', 'Preview')}
               </Button>
               <Button variant="primary" onClick={handleSave}>
                 <Save className="w-4 h-4 mr-2" />
-                Enregistrer
+                {translate('Sauvegarder', 'Save')}
               </Button>
             </div>
           </div>

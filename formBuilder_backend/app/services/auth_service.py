@@ -30,6 +30,8 @@ class AuthService:
         # Créer l'utilisateur
         new_user = User(
             username=user_data.username,
+            nom=user_data.nom,
+            prenom=user_data.prenom,
             email=user_data.email,
             mot_de_passe=hash_password(user_data.mot_de_passe),
             role="UTILISATEUR",

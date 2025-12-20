@@ -18,6 +18,11 @@ export const soumissionsApi = {
     return response.data;
   },
 
+  createPublic: async (soumission: SoumissionCreate): Promise<Soumission> => {
+    const response = await apiClient.post('/soumissions/public', soumission);
+    return response.data;
+  },
+
   updateStatus: async (id: string, statut: 'en_attente' | 'validee' | 'rejetee'): Promise<Soumission> => {
     const response = await apiClient.put(`/soumissions/${id}/statut`, { statut });
     return response.data;

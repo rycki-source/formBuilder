@@ -10,6 +10,7 @@ from app.api.dependencies import get_current_user
 from app.db.session import get_db
 from app.models.user import User
 from app.services.referentiel_service import ReferentielService
+from app.services.referentiel_to_form_service import ReferentielToFormConverter
 from app.schemas.referentiel import (
     ReferentielCreate,
     ReferentielUpdate,
@@ -266,11 +267,13 @@ async def delete_referentiel(
 async def import_from_excel(
     file: UploadFile = File(...),
     save_as_template: bool = Query(False, description="Sauvegarder comme template public"),
+    auto_generate_form: bool = Query(True, description="Générer automatiquement un formulaire éditable"),
+    auto_publish: bool = Query(False, description="Publier automatiquement le formulaire généré"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Importer un référentiel depuis un fichier Excel.
+    Importer un référentiel depuis un fichier Excel et générer automatiquement un formulaire.
     
     Le fichier doit contenir les feuilles suivantes :
     - Metadata : Configuration globale
@@ -278,7 +281,17 @@ async def import_from_excel(
     - Fields : Définition des champs
     - Options : Options pour select/radio/checkbox
     - Validation : Règles de validation
+    
+    Si auto_generate_form=true (par défaut), un formulaire éditable sera créé automatiquement.
     """
+    print("\n" + "="*80)
+    print("🚀 ENDPOINT /import/excel APPELÉ !")
+    print(f"   📁 Fichier: {file.filename}")
+    print(f"   👤 User: {getattr(current_user, 'email', 'unknown')}")
+    print(f"   🔧 auto_generate_form: {auto_generate_form}")
+    print(f"   🔧 auto_publish: {auto_publish}")
+    print("="*80 + "\n")
+    
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -294,6 +307,14 @@ async def import_from_excel(
     try:
         service = ReferentielService(db)
         user_id = getattr(current_user, 'id', None)
+        
+        print(f"\n{'='*60}")
+        print(f"📤 IMPORT EXCEL - Début du traitement")
+        print(f"   Fichier: {file.filename}")
+        print(f"   User ID: {user_id}")
+        print(f"   Save as template: {save_as_template}")
+        print(f"{'='*60}\n")
+        
         referentiel = await service.import_from_excel(
             file_path=tmp_path,
             user_id=user_id,
@@ -301,18 +322,88 @@ async def import_from_excel(
             source_file_name=file.filename
         )
         
-        response_data = service.convert_to_response(referentiel)
-        print(f"🔍 Response data: {response_data}")
-        print(f"🔍 Version: {response_data.get('version')} (type: {type(response_data.get('version'))})")
-        print(f"🔍 Metadata: {response_data.get('metadata')} (type: {type(response_data.get('metadata'))})")
-        print(f"🔍 Config: {response_data.get('config')} (type: {type(response_data.get('config'))})")
+        print(f"\n{'='*60}")
+        print(f"✅ REFERENTIEL CRÉÉ EN BASE")
+        print(f"   ID: {referentiel.id}")
+        print(f"   Nom: {referentiel.nom}")
+        print(f"   Version: {referentiel.version}")
+        print(f"   Source: {referentiel.source_type}")
+        print(f"{'='*60}\n")
         
-        return ReferentielImportResponse(
+        response_data = service.convert_to_response(referentiel)
+        
+        print(f"\n{'='*60}")
+        print(f"📦 RESPONSE DATA GÉNÉRÉE")
+        print(f"   Keys: {list(response_data.keys())}")
+        print(f"   ID: {response_data.get('id')}")
+        print(f"   Ref ID: {response_data.get('ref_id')}")
+        print(f"   Version: {response_data.get('version')} (type: {type(response_data.get('version'))})")
+        print(f"   Metadata: {response_data.get('metadata')}")
+        print(f"   Config keys: {list(response_data.get('config', {}).keys())}")
+        print(f"   Sections: {len(response_data.get('config', {}).get('sections', []))}")
+        if response_data.get('config', {}).get('sections'):
+            for idx, section in enumerate(response_data.get('config', {}).get('sections', [])):
+                print(f"     Section {idx}: {section.get('id')} - {len(section.get('groups', []))} groups")
+        print(f"{'='*60}\n")
+        
+        final_response = ReferentielImportResponse(
             success=True,
             message="Référentiel importé avec succès depuis Excel",
             referentiel=response_data,
             warnings=[]
         )
+        
+        print(f"\n{'='*60}")
+        print(f"🎯 RESPONSE FINALE")
+        print(f"   Success: {final_response.success}")
+        print(f"   Message: {final_response.message}")
+        print(f"   Referentiel présent: {final_response.referentiel is not None}")
+        print(f"{'='*60}\n")
+        
+        # Générer automatiquement un formulaire si demandé
+        formulaire_info = None
+        if auto_generate_form:
+            try:
+                print(f"\n{'='*60}")
+                print(f"🏗️  GÉNÉRATION AUTOMATIQUE DU FORMULAIRE")
+                print(f"{'='*60}\n")
+                
+                converter = ReferentielToFormConverter(db)
+                formulaire = await converter.create_formulaire_from_referentiel(
+                    referentiel_id=referentiel.id,
+                    user_id=user_id,
+                    auto_publish=auto_publish
+                )
+                
+                formulaire_info = {
+                    "id": formulaire.id,
+                    "nom": formulaire.nom,
+                    "description": formulaire.description,
+                    "publie": formulaire.publie,
+                    "nb_champs": len(formulaire.structure_json.get('champs', [])),
+                    "nb_sections": len(formulaire.structure_json.get('sections', [])),
+                    "edit_url": f"/formulaires/{formulaire.id}"
+                }
+                
+                print(f"\n{'='*60}")
+                print(f"✅ FORMULAIRE GÉNÉRÉ AUTOMATIQUEMENT")
+                print(f"   ID: {formulaire.id}")
+                print(f"   Nom: {formulaire.nom}")
+                print(f"   Champs: {formulaire_info['nb_champs']}")
+                print(f"   URL: {formulaire_info['edit_url']}")
+                print(f"{'='*60}\n")
+                
+                # Ajouter l'info du formulaire à la réponse
+                final_response.message = f"Référentiel importé et formulaire #{formulaire.id} généré avec succès"
+                final_response.formulaire_genere = formulaire_info
+                
+            except Exception as form_error:
+                print(f"⚠️  Erreur lors de la génération du formulaire: {form_error}")
+                final_response.warnings.append(
+                    f"Le référentiel a été importé mais la génération du formulaire a échoué: {str(form_error)}"
+                )
+        
+        return final_response
     
     except ValueError as e:
         raise HTTPException(
@@ -535,3 +626,78 @@ async def export_referentiel(
         )
     
     return response_data.model_dump()
+
+
+@router.post("/{referentiel_id}/generate-form", status_code=status.HTTP_201_CREATED)
+async def generate_formulaire_from_referentiel(
+    referentiel_id: int,
+    auto_publish: bool = Query(False, description="Publier automatiquement le formulaire"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Génère automatiquement un formulaire éditable à partir d'un référentiel.
+    
+    Le formulaire généré :
+    - Est créé dans la table `formulaire`
+    - Contient tous les champs du référentiel convertis
+    - Est éditable dans FormBuilder
+    - Peut être publié immédiatement si auto_publish=true
+    
+    Returns:
+        Le formulaire généré avec son ID pour redirection
+    """
+    converter = ReferentielToFormConverter(db)
+    user_id = getattr(current_user, 'id', None)
+    
+    try:
+        print(f"\n{'='*60}")
+        print(f"🏗️  GÉNÉRATION FORMULAIRE DEPUIS RÉFÉRENTIEL")
+        print(f"   Référentiel ID: {referentiel_id}")
+        print(f"   User ID: {user_id}")
+        print(f"   Auto-publish: {auto_publish}")
+        print(f"{'='*60}\n")
+        
+        formulaire = await converter.create_formulaire_from_referentiel(
+            referentiel_id=referentiel_id,
+            user_id=user_id,
+            auto_publish=auto_publish
+        )
+        
+        print(f"\n{'='*60}")
+        print(f"✅ FORMULAIRE GÉNÉRÉ")
+        print(f"   ID: {formulaire.id}")
+        print(f"   Nom: {formulaire.nom}")
+        print(f"   Champs: {len(formulaire.structure_json.get('champs', []))}")
+        print(f"   Sections: {len(formulaire.structure_json.get('sections', []))}")
+        print(f"   Publié: {formulaire.publie}")
+        print(f"{'='*60}\n")
+        
+        return {
+            "success": True,
+            "message": "Formulaire généré avec succès",
+            "formulaire": {
+                "id": formulaire.id,
+                "nom": formulaire.nom,
+                "description": formulaire.description,
+                "publie": formulaire.publie,
+                "nb_champs": len(formulaire.structure_json.get('champs', [])),
+                "nb_sections": len(formulaire.structure_json.get('sections', [])),
+                "edit_url": f"/formulaires/{formulaire.id}/edit"
+            }
+        }
+        
+    except ValueError as e:
+        print(f"❌ Erreur de validation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"❌ Erreur inattendue: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la génération du formulaire: {str(e)}"
+        )

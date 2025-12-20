@@ -12,6 +12,93 @@ from typing import List
 
 router = APIRouter(prefix="/soumissions", tags=["soumissions"])
 
+@router.post("/public", response_model=SoumissionResponse, status_code=201)
+async def create_soumission_public(
+    request: Request,
+    soumission_data: SoumissionCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Soumettre un formulaire de manière publique (sans authentification)"""
+    try:
+        # Récupérer le formulaire
+        from app.services.formulaire_service import FormulaireService
+        form_service = FormulaireService(db)
+        formulaire = await form_service.get_formulaire(soumission_data.formulaire_id)
+
+        if not formulaire:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "FORMULAIRE_INTROUVABLE",
+                    "message": f"Le formulaire avec l'ID {soumission_data.formulaire_id} n'existe pas",
+                    "action": "Vérifiez que le formulaire est toujours disponible"
+                }
+            )
+
+        # Vérifier si le formulaire est public
+        if not getattr(formulaire, 'publie', False):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "FORMULAIRE_PRIVE",
+                    "message": "Ce formulaire nécessite une authentification",
+                    "action": "Connectez-vous pour soumettre ce formulaire"
+                }
+            )
+
+        # Valider la soumission
+        valide, erreurs = ValidationService.validate_soumission(
+            soumission_data.donnees,
+            formulaire.structure_json
+        )
+
+        if not valide:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "VALIDATION_ECHOUEE",
+                    "message": "Les données soumises ne sont pas valides",
+                    "erreurs": erreurs,
+                    "action": "Corrigez les champs en erreur et réessayez"
+                }
+            )
+
+        # Créer la soumission
+        new_soumission = Soumission(
+            formulaire_id=soumission_data.formulaire_id,
+            donnees=soumission_data.donnees,
+            utilisateur_id=None,  # Soumission anonyme
+            statut="SOUMIS"
+        )
+        db.add(new_soumission)
+        await db.commit()
+        await db.refresh(new_soumission)
+
+        # Log audit (sans utilisateur)
+        audit_service = AuditService(db)
+        await audit_service.log_action(
+            action="SOUMISSION_PUBLIQUE_CREEE",
+            module="SOUMISSION",
+            utilisateur_id=None,
+            ressource_type="soumission",
+            ressource_id=new_soumission.id,
+            ip_adresse=request.client.host
+        )
+
+        return new_soumission
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "ERREUR_SOUMISSION",
+                "message": f"Erreur lors de la soumission: {str(e)}",
+                "action": "Réessayez ou contactez l'administrateur si le problème persiste"
+            }
+        )
+
 @router.post("/", response_model=SoumissionResponse, status_code=201)
 async def create_soumission(
     request: Request,

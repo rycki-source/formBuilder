@@ -20,6 +20,19 @@ export interface User {
 }
 
 // Types pour les formulaires
+export interface ValidationRule {
+  type: 'required' | 'email' | 'pattern' | 'minLength' | 'maxLength' | 'min' | 'max' | 'url' | 'custom' | 'dependency';
+  message: string;
+  value?: string | number;
+  pattern?: string;
+  customValidator?: string;
+  dependsOn?: {
+    field: string;
+    condition: 'equals' | 'notEquals' | 'contains' | 'greaterThan' | 'lessThan';
+    value: any;
+  };
+}
+
 export interface ChampFormulaire {
   id?: string;
   label: string;
@@ -29,6 +42,7 @@ export interface ChampFormulaire {
   ordre: number;
   options?: string[];
   validation?: Record<string, unknown>;
+  validation_rules?: ValidationRule[];
   buttonType?: 'submit' | 'reset' | 'button';
   buttonStyle?: 'primary' | 'secondary' | 'danger';
 }
@@ -89,10 +103,10 @@ export interface Soumission {
 }
 
 export interface SoumissionCreate {
-  formulaire_id: string;
+  formulaire_id: number;
   reponses?: Record<string, unknown>;
   donnees: Record<string, unknown>;
-  statut?: 'en_attente' | 'validee' | 'rejetee';
+  statut?: 'SOUMIS' | 'en_attente' | 'validee' | 'rejetee';
 }
 
 // Types pour les référentiels

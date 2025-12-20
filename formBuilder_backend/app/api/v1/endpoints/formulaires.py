@@ -191,8 +191,16 @@ async def delete_formulaire(
     return None
 
 
-def generate_form_html(formulaire: dict, include_wrapper: bool = True, for_pdf: bool = False) -> str:
-    """Générer le HTML d'un formulaire pour intégration"""
+def generate_form_html(formulaire: dict, include_wrapper: bool = True, for_pdf: bool = False, include_header: bool = True, include_submit_button: bool = True) -> str:
+    """Générer le HTML d'un formulaire pour intégration
+    
+    Args:
+        formulaire: Dictionnaire contenant les informations du formulaire
+        include_wrapper: Si True, inclut le wrapper HTML complet (<!DOCTYPE>, <html>, etc.)
+        for_pdf: Si True, n'inclut pas le JavaScript
+        include_header: Si True, inclut le titre et la description du formulaire
+        include_submit_button: Si True, inclut les boutons de soumission
+    """
     structure = formulaire.get('structure_json', {})
     champs = structure.get('champs', [])
     etapes = structure.get('etapes', [])
@@ -224,6 +232,7 @@ def generate_form_html(formulaire: dict, include_wrapper: bool = True, for_pdf: 
             border-bottom: 2px solid #e5e7eb;
             padding-bottom: 24px;
             margin-bottom: 32px;
+            text-align: center;
         }
         h1 {
             font-size: 32px;
@@ -452,12 +461,17 @@ def generate_form_html(formulaire: dict, include_wrapper: bool = True, for_pdf: 
     </head>
     <body>
         <div class="container">
+    """
+        # Ajouter le header seulement si demandé
+        if include_header:
+            html += f"""
             <div class="header">
                 <h1>{formulaire.get('nom', 'Formulaire')}</h1>
                 <span class="badge">{type_structurel}</span>
                 {f'<p class="description">{formulaire.get("description")}</p>' if formulaire.get('description') else ''}
             </div>
-            
+    """
+        html += """
             <form id="formbuilder-form">
     """
     else:
@@ -466,12 +480,17 @@ def generate_form_html(formulaire: dict, include_wrapper: bool = True, for_pdf: 
         <!-- FormBuilder - {formulaire.get('nom')} -->
         {css}
         <div class="formbuilder-container">
+    """
+        # Ajouter le header seulement si demandé
+        if include_header:
+            html += f"""
             <div class="formbuilder-header">
                 <h2>{formulaire.get('nom', 'Formulaire')}</h2>
                 <span class="badge">{type_structurel}</span>
                 {f'<p class="description">{formulaire.get("description")}</p>' if formulaire.get('description') else ''}
             </div>
-            
+    """
+        html += f"""
             <form id="formbuilder-form-{formulaire_id}">
     """
     
@@ -500,12 +519,16 @@ def generate_form_html(formulaire: dict, include_wrapper: bool = True, for_pdf: 
             html += generate_field_html(champ)
         html += '</div>'
     
-    # Boutons de soumission
-    html += """
+    # Boutons de soumission (seulement si demandé)
+    if include_submit_button:
+        html += """
                 <div class="field-group">
                     <button type="submit" class="button button-primary">Soumettre</button>
                     <button type="reset" class="button button-secondary" style="margin-left: 10px;">Réinitialiser</button>
                 </div>
+    """
+    
+    html += """
             </form>
     """
     
@@ -531,6 +554,151 @@ def generate_form_html(formulaire: dict, include_wrapper: bool = True, for_pdf: 
         # N'inclure le JavaScript que si ce n'est pas pour PDF
         if not for_pdf:
             html += javascript
+    
+    return html
+
+
+def generate_soumission_html(formulaire: dict, donnees: dict) -> str:
+    """Générer le HTML d'une soumission (réponses uniquement, sans formulaire)"""
+    structure = formulaire.get('structure_json', {})
+    champs = structure.get('champs', [])
+    etapes = structure.get('etapes', [])
+    type_structurel = formulaire.get('type_structurel', 'simple')
+    
+    # Style CSS pour l'affichage des réponses
+    css = """
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f9fafb;
+            padding: 40px 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+        }
+        .header {
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 16px;
+            margin-bottom: 32px;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 8px 0;
+        }
+        .meta {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .section {
+            margin-bottom: 32px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .field {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        .field-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .field-value {
+            font-size: 16px;
+            color: #111827;
+            font-weight: 500;
+        }
+        .empty-value {
+            color: #9ca3af;
+            font-style: italic;
+        }
+    </style>
+    """
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Réponses - {formulaire.get('nom', 'Formulaire')}</title>
+        {css}
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Réponses au formulaire</h1>
+                <div class="meta">Formulaire : {formulaire.get('nom', 'Sans titre')}</div>
+            </div>
+    """
+    
+    # Formulaire multi-étapes
+    if type_structurel in ['multi-etapes', 'wizard'] and etapes:
+        for idx, etape in enumerate(etapes, 1):
+            html += f"""
+            <div class="section">
+                <div class="section-title">Étape {idx}: {etape.get('titre', f'Étape {idx}')}</div>
+            """
+            
+            champs_etape = etape.get('champs', [])
+            for champ in champs_etape:
+                label = champ.get('label', 'Champ')
+                field_name = label.lower().replace(' ', '_').replace("'", '').replace('"', '')
+                valeur = donnees.get(field_name, donnees.get(label, ''))
+                
+                valeur_display = valeur if valeur else '<span class="empty-value">Non renseigné</span>'
+                
+                html += f"""
+                <div class="field">
+                    <div class="field-label">{label}</div>
+                    <div class="field-value">{valeur_display}</div>
+                </div>
+                """
+            
+            html += "</div>"
+    
+    # Formulaire simple
+    else:
+        html += '<div class="section">'
+        for champ in champs:
+            label = champ.get('label', 'Champ')
+            field_name = label.lower().replace(' ', '_').replace("'", '').replace('"', '')
+            valeur = donnees.get(field_name, donnees.get(label, ''))
+            
+            valeur_display = valeur if valeur else '<span class="empty-value">Non renseigné</span>'
+            
+            html += f"""
+            <div class="field">
+                <div class="field-label">{label}</div>
+                <div class="field-value">{valeur_display}</div>
+            </div>
+            """
+        html += '</div>'
+    
+    html += """
+        </div>
+    </body>
+    </html>
+    """
     
     return html
 
@@ -632,7 +800,7 @@ async def get_formulaire_html(
     formulaire_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    """Récupérer le formulaire en HTML"""
+    """Récupérer le formulaire en HTML (avec titre et description centrés, sans bouton de soumission)"""
     service = FormulaireService(db)
     formulaire = await service.get_formulaire(formulaire_id)
     
@@ -649,7 +817,8 @@ async def get_formulaire_html(
         'structure_json': formulaire.structure_json
     }
     
-    html_content = generate_form_html(formulaire_dict)
+    # Générer HTML avec header (titre/description) mais sans bouton de soumission
+    html_content = generate_form_html(formulaire_dict, include_header=True, include_submit_button=False)
     return HTMLResponse(content=html_content)
 
 
@@ -658,7 +827,8 @@ async def get_formulaire_embed(
     formulaire_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    """Récupérer le code HTML embarquable (pour intégration dans une autre application)"""
+    """Récupérer le code HTML embarquable (pour intégration dans une autre application)
+    Le code généré contient le titre et la description centrés, sans les boutons de soumission."""
     service = FormulaireService(db)
     formulaire = await service.get_formulaire(formulaire_id)
     
@@ -675,8 +845,8 @@ async def get_formulaire_embed(
         'structure_json': formulaire.structure_json
     }
     
-    # Générer le HTML sans wrapper (pour intégration)
-    html_content = generate_form_html(formulaire_dict, include_wrapper=False)
+    # Générer le HTML sans wrapper, avec header centré mais sans boutons
+    html_content = generate_form_html(formulaire_dict, include_wrapper=False, include_header=True, include_submit_button=False)
     return HTMLResponse(content=html_content)
 
 
@@ -769,8 +939,7 @@ async def submit_formulaire_public(
     soumission_data = SoumissionCreate(
         formulaire_id=formulaire_id,
         donnees=data["donnees"],
-        reponses=data.get("donnees", {}),  # Pour compatibilité
-        statut="en_attente"
+        statut="EN_ATTENTE"
     )
     
     try:
@@ -813,8 +982,8 @@ async def get_formulaire_pdf(
         'type_fonctionnel': formulaire.type_fonctionnel,
         'structure_json': formulaire.structure_json
     }
-    
-    # Générer le code HTML du formulaire (pour intégration)
+    # Générer le code HTML du formulaire (pour intégration, avec header centré mais sans boutons)
+    form_html_code = generate_form_html(formulaire_dict, include_wrapper=False, for_pdf=False, include_header=True, include_submit_button=False)
     form_html_code = generate_form_html(formulaire_dict, include_wrapper=False, for_pdf=False)
     
     # Créer un document HTML qui affiche le code HTML source

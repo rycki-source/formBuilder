@@ -10,7 +10,16 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.db.base import Base
+
+# Import pour éviter les duplications de modèles
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.versioning import FormulaireVersion
+    from app.models.analytics import FormAnalytics
+    from app.models.templates import FormTheme
 
 
 class Formulaire(Base):
@@ -39,28 +48,20 @@ class Formulaire(Base):
     webhook_enabled = Column(Boolean, default=False)  # Activer/désactiver le webhook
     webhook_secret = Column(String(255), nullable=True)  # Secret pour sécuriser le webhook
     webhook_retry_count = Column(Integer, default=3)  # Nombre de tentatives en cas d'échec
-
-
-class FormulaireVersion(Base):
-    __tablename__ = "formulaire_version"
-
-    id = Column(Integer, primary_key=True, index=True)
-    formulaire_id = Column(
-        Integer, ForeignKey("formulaire.id", ondelete="CASCADE"), nullable=False
-    )
-    numero_version = Column(String(20), nullable=False)
-    majeur = Column(Integer, nullable=False)
-    mineur = Column(Integer, nullable=False)
-    patch = Column(Integer, nullable=False)
-    structure_json = Column(JSONB, nullable=False)
-    commentaire = Column(Text, nullable=True)
-    date_creation = Column(DateTime, server_default=func.now())
-    auteur_id = Column(
-        Integer, ForeignKey("utilisateur.id", ondelete="SET NULL"), nullable=True
-    )
-    actif = Column(Boolean, default=True)
-
-    __table_args__ = (UniqueConstraint("formulaire_id", "numero_version"),)
+    
+    # Nouveau: Theme et configuration visuelle
+    theme_id = Column(Integer, ForeignKey("form_themes.id", ondelete="SET NULL"), nullable=True)
+    
+    # Nouveau: Logique conditionnelle
+    conditional_logic = Column(JSONB, nullable=True)  # Règles de visibilité des champs
+    
+    # Nouveau: Champs calculés
+    calculated_fields = Column(JSONB, nullable=True)  # Formules de calcul
+    
+    # Relations
+    analytics = relationship("FormAnalytics", back_populates="formulaire", cascade="all, delete-orphan")
+    versions = relationship("FormulaireVersion", back_populates="formulaire", cascade="all, delete-orphan")
+    theme = relationship("FormTheme", foreign_keys=[theme_id])
 
 
 class Champ(Base):

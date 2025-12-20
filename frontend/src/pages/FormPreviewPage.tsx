@@ -9,6 +9,8 @@ import { Input } from '../components/Input';
 import { MultiStepFormPreview } from '../components/MultiStepFormPreview';
 import type { ChampFormulaire, EtapeFormulaire } from '../types';
 import { apiClient } from '../api/axios';
+import { convertChampToFieldConfig } from '../utils/formConverter';
+import { validateField } from '../features/DynamicForm/utils/validationEngine';
 
 export const FormPreviewPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,48 +40,83 @@ export const FormPreviewPage = () => {
     }
 
     try {
-      await soumissionsApi.create({
-        formulaire_id: id,
-        donnees: submitData
+      const result = await soumissionsApi.create({
+        formulaire_id: parseInt(id),
+        donnees: submitData,
+        statut: 'SOUMIS' as const
       });
       
+      console.log('Soumission réussie:', result);
       alert('Formulaire soumis avec succès !');
       setFormData({}); // Réinitialiser le formulaire
       
       if (currentFormulaire?.type_structurel === 'modal') {
         setShowModal(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la soumission:', error);
-      alert('Erreur lors de la soumission du formulaire');
+      
+      let errorMessage = 'Erreur lors de la soumission du formulaire';
+      
+      if (error.response?.status === 422) {
+        errorMessage = 'Données de formulaire invalides. Vérifiez vos saisies.';
+        if (error.response?.data?.detail) {
+          console.error('Détails validation:', error.response.data.detail);
+        }
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Formulaire introuvable';
+      } else if (error.response?.status === 403) {
+        errorMessage = 'Authentification requise pour ce formulaire';
+      }
+      
+      alert(errorMessage);
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation des champs obligatoires
-    let requiredFields: ChampFormulaire[] = [];
+    // Récupérer tous les champs à valider
+    let allChamps: ChampFormulaire[] = [];
     
     if (normalizedChamps.length > 0) {
-      // Formulaire simple
-      requiredFields = normalizedChamps.filter(f => f.obligatoire) || [];
+      allChamps = normalizedChamps;
     } else if (normalizedEtapes.length > 0) {
-      // Formulaire multi-étapes
       normalizedEtapes.forEach((etape: EtapeFormulaire) => {
         if (etape.champs) {
-          requiredFields = [...requiredFields, ...etape.champs.filter((f: ChampFormulaire) => f.obligatoire)];
+          allChamps = [...allChamps, ...etape.champs];
         }
       });
     }
     
-    const missingFields = requiredFields.filter(f => !formData[f.label]);
+    // Validation complète avec les règles personnalisées
+    const validationErrors: string[] = [];
     
-    if (missingFields.length > 0) {
-      alert(`Veuillez remplir les champs obligatoires : ${missingFields.map(f => f.label).join(', ')}`);
+    for (const champ of allChamps) {
+      // Convertir le champ en FieldConfig avec les règles de validation
+      const fieldConfig = convertChampToFieldConfig(champ);
+      const fieldValue = formData[champ.label];
+      
+      // Valider le champ
+      const validationResult = await validateField(
+        fieldConfig,
+        fieldValue,
+        formData,
+        {}
+      );
+      
+      if (!validationResult.isValid) {
+        validationErrors.push(`${champ.label}: ${validationResult.errors.join(', ')}`);
+      }
+    }
+    
+    // Afficher les erreurs si validation échoue
+    if (validationErrors.length > 0) {
+      alert(`❌ Erreurs de validation:\n\n${validationErrors.map(err => `• ${err}`).join('\n')}`);
       return;
     }
 
+    // Si validation réussie, soumettre
     handleSubmit();
   };
 
@@ -264,11 +301,15 @@ export const FormPreviewPage = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Sélectionnez une option</option>
-              {field.options?.map((option, idx) => (
-                <option key={idx} value={option}>
-                  {option}
-                </option>
-              ))}
+              {field.options?.map((option, idx) => {
+                const optValue = typeof option === 'string' ? option : option.valeur || option.value;
+                const optLabel = typeof option === 'string' ? option : option.label || option.valeur;
+                return (
+                  <option key={idx} value={optValue}>
+                    {optLabel}
+                  </option>
+                );
+              })}
             </select>
           </div>
         );
@@ -297,21 +338,25 @@ export const FormPreviewPage = () => {
               {field.label} {field.obligatoire && <span className="text-red-500">*</span>}
             </label>
             <div className="space-y-2">
-              {field.options?.map((option, idx) => (
-                <div key={idx} className="flex items-center">
-                  <input
-                    type="radio"
-                    name={field.label}
-                    value={option}
-                    checked={formData[field.label] === option}
-                    onChange={(e) => handleInputChange(field.label, e.target.value)}
-                    required={field.obligatoire}
-                    aria-label={`${field.label} - ${option}`}
-                    className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <label className="ml-2 text-sm text-gray-700">{option}</label>
-                </div>
-              ))}
+              {field.options?.map((option, idx) => {
+                const optValue = typeof option === 'string' ? option : option.valeur || option.value;
+                const optLabel = typeof option === 'string' ? option : option.label || option.valeur;
+                return (
+                  <div key={idx} className="flex items-center">
+                    <input
+                      type="radio"
+                      name={field.label}
+                      value={optValue}
+                      checked={formData[field.label] === optValue}
+                      onChange={(e) => handleInputChange(field.label, e.target.value)}
+                      required={field.obligatoire}
+                      aria-label={`${field.label} - ${optLabel}`}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <label className="ml-2 text-sm text-gray-700">{optLabel}</label>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );

@@ -334,6 +334,7 @@ class ReferentielImportResponse(BaseModel):
     success: bool
     message: Optional[str] = None
     referentiel: Optional[ReferentielResponse] = None
+    formulaire_genere: Optional[Dict[str, Any]] = None  # Info du formulaire généré automatiquement
     errors: Optional[List[str]] = None
     warnings: Optional[List[str]] = None
 

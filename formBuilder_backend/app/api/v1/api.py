@@ -2,7 +2,8 @@
 
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
-    auth, formulaires, soumissions, referentiels, exports, users, dashboard
+    auth, formulaires, soumissions, referentiels, exports, users, dashboard,
+    analytics, versioning, templates
 )
 # Endpoints admin - import séparé pour éviter les erreurs si modules manquants
 try:
@@ -24,6 +25,11 @@ api_router.include_router(soumissions.router)
 api_router.include_router(referentiels.router)
 api_router.include_router(exports.router)
 api_router.include_router(dashboard.router)
+
+# Nouveaux endpoints
+api_router.include_router(analytics.router)
+api_router.include_router(versioning.router)
+api_router.include_router(templates.router)
 
 # Endpoints admin (si disponibles)
 if ADMIN_ENDPOINTS_AVAILABLE:

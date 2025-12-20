@@ -3,6 +3,8 @@ import type { LoginRequest, LoginResponse, User } from '../types';
 
 export interface RegisterRequest {
   username: string;
+  nom: string;
+  prenom: string;
   email: string;
   mot_de_passe: string;
   role?: string;
@@ -11,7 +13,7 @@ export interface RegisterRequest {
 export const authApi = {
   login: async (credentials: LoginRequest): Promise<LoginResponse> => {
     const response = await apiClient.post('/auth/login', {
-      email: credentials.username.trim().toLowerCase(),
+      email: credentials.username,
       mot_de_passe: credentials.password,
     });
     return response.data;
