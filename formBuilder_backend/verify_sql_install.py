@@ -17,6 +17,10 @@ async def verify_installation():
             text("SELECT hash_password('Test123!') as hash")
         )
         row = result.fetchone()
+        if row is None or row[0] is None:
+            print(f"1. Fonction hash_password: ❌")
+            print(f"   Erreur: Impossible de générer le hash\n")
+            return
         print(f"1. Fonction hash_password: ✅")
         print(f"   Hash généré: {row[0][:50]}...\n")
         
@@ -25,7 +29,8 @@ async def verify_installation():
             text("SELECT verify_password('Test123!', :hash) as valid"),
             {"hash": row[0]}
         )
-        valid = result.fetchone()[0]
+        result_row = result.fetchone()
+        valid = result_row[0] if result_row else False
         print(f"2. Fonction verify_password: {'✅' if valid else '❌'}\n")
         
         # Test 3: Lister les utilisateurs

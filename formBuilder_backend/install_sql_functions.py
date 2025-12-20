@@ -150,6 +150,9 @@ async def test_functions():
             {"pwd": "TestPassword123!"}
         )
         row = result.fetchone()
+        if row is None:
+            print("❌ Erreur: Impossible de hasher le mot de passe")
+            return
         test_hash = row[0]
         print(f"\n  Test hash: {test_hash[:50]}...")
         
@@ -159,6 +162,9 @@ async def test_functions():
             {"pwd": "TestPassword123!", "hash": test_hash}
         )
         row = result.fetchone()
+        if row is None:
+            print("❌ Erreur: Impossible de vérifier le mot de passe")
+            return
         is_valid = row[0]
         print(f"  Vérification: {'✅ OK' if is_valid else '❌ ERREUR'}")
         

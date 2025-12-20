@@ -3,10 +3,11 @@ Créer un fichier Excel exemple pour tester l'import
 """
 import openpyxl
 from openpyxl.styles import Font, PatternFill
+from openpyxl.worksheet.worksheet import Worksheet
 
 # Créer un nouveau workbook
 wb = openpyxl.Workbook()
-ws = wb.active
+ws: Worksheet = wb.active  # type: ignore
 ws.title = "Formulaire"
 
 # Style pour l'en-tête
